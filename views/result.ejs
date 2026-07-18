@@ -65,10 +65,14 @@
       </div>
 
       <!-- Action Buttons -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
         <button id="btn-review"
           class="bg-stone-900/80 border border-stone-800 text-stone-300 hover:text-white font-semibold p-3.5 rounded-lg transition duration-300 hover:border-amber-500/50 active:scale-[0.99] flex items-center justify-center gap-2">
           🔍 Review Explanations
+        </button>
+        <button id="btn-share"
+          class="bg-stone-900/80 border border-stone-800 text-stone-300 hover:text-white font-semibold p-3.5 rounded-lg transition duration-300 hover:border-amber-500/50 active:scale-[0.99] flex items-center justify-center gap-2">
+          🔗 Share Score
         </button>
         <a href="/"
           class="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-semibold p-3.5 rounded-lg shadow-lg active:scale-[0.99] transition duration-300 flex items-center justify-center gap-2">
@@ -131,6 +135,41 @@
           }, 300);
         }, 400);
       }
+
+      // Share score logic
+      const urlParams = new URLSearchParams(window.location.search);
+      const sectionId = urlParams.get('sectionId');
+      let sectionName = '';
+
+      if (sectionId) {
+        fetch(`/api/quiz/sections/${sectionId}`)
+          .then(res => res.json())
+          .then(section => {
+            sectionName = section.name;
+          })
+          .catch(err => console.error("Error loading section name for sharing:", err));
+      }
+
+      const btnShare = document.getElementById('btn-share');
+      if (btnShare) {
+        btnShare.addEventListener('click', async () => {
+          const topicText = sectionName ? ` the ${sectionName}` : '';
+          const shareText = `I scored ${score}/${total} on${topicText} quiz on Quizzard! Can you beat me?`;
+
+          try {
+            await navigator.clipboard.writeText(shareText);
+            const originalText = btnShare.innerHTML;
+            btnShare.innerHTML = '✅ Copied!';
+            setTimeout(() => {
+              btnShare.innerHTML = originalText;
+            }, 2000);
+          } catch (err) {
+            console.error('Failed to copy text: ', err);
+            alert('Failed to copy score. Here it is: ' + shareText);
+          }
+        });
+      }
+
       // Review explanations logic
       const btnReview = document.getElementById('btn-review');
       const reviewSection = document.getElementById('review-section');
