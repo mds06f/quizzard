@@ -2,6 +2,12 @@ const express = require('express');
 const router = express.Router();
 const db = require('../db');
 const { GoogleGenAI } = require('@google/genai');
+const multer = require('multer');
+const { PDFParse } = require('pdf-parse');
+
+const upload = multer({
+  limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
+});
 
 router.get('/sections', async (req, res) => {
   try {
@@ -77,9 +83,30 @@ router.post('/save-result', async (req, res) => {
   }
 });
 
-router.post('/generate-ai', async (req, res) => {
+router.post('/generate-ai', upload.single('file'), async (req, res) => {
   const { text, difficulty, userName, numQuestions } = req.body;
-  if (!text || text.trim().length < 50) {
+  const file = req.file;
+
+  let notesText = '';
+
+  if (file) {
+    try {
+      if (file.mimetype === 'application/pdf') {
+        const parser = new PDFParse({ data: file.buffer });
+        const parsedPdf = await parser.getText();
+        notesText = parsedPdf.text;
+      } else {
+        notesText = file.buffer.toString('utf8');
+      }
+    } catch (err) {
+      console.error('Error parsing uploaded file:', err);
+      return res.status(400).json({ error: 'Failed to parse uploaded file. Make sure it is a valid PDF, TXT, or Markdown document.' });
+    }
+  } else {
+    notesText = text;
+  }
+
+  if (!notesText || notesText.trim().length < 50) {
     return res.status(400).json({ error: 'Please enter at least 50 characters of notes.' });
   }
 
@@ -101,7 +128,7 @@ Each question must have exactly 4 options and a 1-indexed correct_option number.
 Provide a clear, educational explanation (maximum 2 sentences) for the correct answer.
 
 Here is the source text to generate the quiz from:
-${text}`;
+${notesText}`;
 
     const response = await ai.models.generateContent({
       model: 'gemini-2.5-flash',
@@ -144,7 +171,7 @@ ${text}`;
     });
 
     // Create a section title from the beginning of the text
-    const cleanName = text.trim().substring(0, 30).replace(/\n/g, ' ') + '...';
+    const cleanName = notesText.trim().substring(0, 30).replace(/\n/g, ' ') + '...';
     const sectionTitle = `AI Quiz: ${cleanName}`;
 
     const sectionId = await db.createAIQuiz(sectionTitle, quizData.questions);
