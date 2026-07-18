@@ -117,6 +117,13 @@
       <p class="text-stone-400 mt-2 font-light tracking-wide text-sm sm:text-base">
         Interactive study engine powered by local storage & Gemini AI
       </p>
+      
+      <!-- Streak Badge -->
+      <div id="streak-badge-container" class="mt-4 flex justify-center items-center hidden">
+        <span class="inline-flex items-center gap-1.5 bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">
+          🔥 <span id="streak-count">0</span> Day Study Streak
+        </span>
+      </div>
     </div>
 
     <!-- Main Card -->
@@ -557,6 +564,40 @@
     document.addEventListener('DOMContentLoaded', () => {
       // Initialize theme toggler
       initThemeToggle();
+
+      // Streak validation
+      const streakDataRaw = localStorage.getItem('streakData');
+      const container = document.getElementById('streak-badge-container');
+      const countEl = document.getElementById('streak-count');
+      
+      if (streakDataRaw) {
+        try {
+          const data = JSON.parse(streakDataRaw);
+          if (data.lastDate) {
+            const today = new Date();
+            today.setHours(0,0,0,0);
+            const last = new Date(data.lastDate);
+            last.setHours(0,0,0,0);
+            
+            const diffTime = Math.abs(today - last);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+            
+            if (diffDays > 1) {
+              data.streak = 0;
+              data.lastDate = null;
+              localStorage.setItem('streakData', JSON.stringify(data));
+            }
+          }
+          if (data.streak > 0) {
+            countEl.textContent = data.streak;
+            container.classList.remove('hidden');
+          } else {
+            container.classList.add('hidden');
+          }
+        } catch (e) {
+          console.error("Error loading streak data", e);
+        }
+      }
 
       // Default Active Tab styling
       tabStandard.classList.add('tab-active', 'border-amber-500');

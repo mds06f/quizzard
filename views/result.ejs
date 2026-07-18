@@ -123,6 +123,13 @@
         Quiz Completed!
       </h1>
 
+      <!-- Streak Badge -->
+      <div id="streak-badge-container" class="mt-2 flex justify-center items-center hidden">
+        <span class="inline-flex items-center gap-1.5 bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">
+          🔥 <span id="streak-count">0</span> Day Study Streak
+        </span>
+      </div>
+
       <!-- Score Circle Indicator -->
       <div
         class="score-circle w-32 h-32 rounded-full border-2 border-amber-550/30 flex flex-col items-center justify-center mx-auto shadow-lg shadow-amber-500/10">
@@ -181,6 +188,58 @@
 
   <script>
     document.addEventListener('DOMContentLoaded', () => {
+      // Streak Calculation
+      function getLocalDateString() {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+      }
+
+      function getDaysDifference(dateStr1, dateStr2) {
+        if (!dateStr1 || !dateStr2) return Infinity;
+        const d1 = new Date(dateStr1);
+        const d2 = new Date(dateStr2);
+        d1.setHours(0,0,0,0);
+        d2.setHours(0,0,0,0);
+        const diffTime = Math.abs(d2 - d1);
+        return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      }
+
+      const currentDate = getLocalDateString();
+      const rawData = localStorage.getItem('streakData');
+      let streakData = { streak: 0, lastDate: null };
+
+      try {
+        if (rawData) {
+          streakData = JSON.parse(rawData);
+        }
+      } catch (e) {
+        console.error("Error parsing streakData", e);
+      }
+
+      if (!streakData.lastDate) {
+        streakData.streak = 1;
+        streakData.lastDate = currentDate;
+      } else {
+        const diff = getDaysDifference(streakData.lastDate, currentDate);
+        if (diff === 1) {
+          streakData.streak += 1;
+          streakData.lastDate = currentDate;
+        } else if (diff > 1) {
+          streakData.streak = 1;
+          streakData.lastDate = currentDate;
+        }
+      }
+
+      localStorage.setItem('streakData', JSON.stringify(streakData));
+
+      if (streakData.streak > 0) {
+        document.getElementById('streak-count').textContent = streakData.streak;
+        document.getElementById('streak-badge-container').classList.remove('hidden');
+      }
+
       // Calculate percentage
       const score = parseInt("<%= score %>", 10);
       const total = parseInt("<%= total %>", 10);
