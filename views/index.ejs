@@ -5,12 +5,77 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quiz Session - Quizzard</title>
+  <script>
+    if (localStorage.getItem('theme') === 'light') {
+      document.documentElement.classList.add('theme-light');
+    }
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
     rel="stylesheet">
   <style>
+    /* Light/Cream Theme overrides */
+    .theme-light body {
+      background: linear-gradient(135deg, #fdfbf7 0%, #f4efe6 50%, #e9e0d2 100%);
+      color: #292524;
+    }
+    .theme-light .glass-card {
+      background: rgba(253, 251, 247, 0.75);
+      border-color: rgba(41, 37, 36, 0.08);
+      box-shadow: 0 10px 30px -10px rgba(120, 110, 90, 0.2), 0 1px 3px rgba(120, 110, 90, 0.05);
+    }
+    .theme-light h1, .theme-light h2, .theme-light h3 {
+      color: #1c1917;
+    }
+    .theme-light p, .theme-light label {
+      color: #44403c;
+    }
+    .theme-light .text-stone-300 {
+      color: #292524;
+    }
+    .theme-light .text-stone-400, .theme-light .text-stone-550, .theme-light .text-stone-500 {
+      color: #57524d;
+    }
+    .theme-light .text-stone-100 {
+      color: #1c1917;
+    }
+    .theme-light .neon-border {
+      background-color: rgba(255, 255, 255, 0.6);
+      border-color: rgba(41, 37, 36, 0.12);
+    }
+    .theme-light select, .theme-light input[type="text"], .theme-light textarea {
+      color: #1c1917;
+    }
+    .theme-light select option {
+      background-color: #fdfbf7;
+      color: #1c1917;
+    }
+    .theme-light #theme-toggle {
+      background-color: rgba(253, 251, 247, 0.8);
+      border-color: rgba(41, 37, 36, 0.1);
+      color: #1c1917;
+      box-shadow: 0 4px 12px rgba(120, 110, 90, 0.1);
+    }
+    .theme-light #theme-toggle:hover {
+      background-color: rgba(253, 251, 247, 0.95);
+    }
+    .theme-light .bg-stone-905\/60, .theme-light .bg-stone-900\/60 {
+      background-color: rgba(255, 255, 255, 0.5);
+      border-color: rgba(41, 37, 36, 0.10);
+    }
+    .theme-light .border-stone-850 {
+      border-color: rgba(41, 37, 36, 0.10);
+    }
+    .theme-light #sound-toggle {
+      border-color: rgba(41, 37, 36, 0.15);
+      color: #1c1917;
+    }
+    .theme-light #sound-toggle:hover {
+      border-color: rgba(217, 119, 6, 0.4);
+    }
+
     body {
       font-family: 'Outfit', sans-serif;
     }
@@ -28,6 +93,14 @@
       border-color: rgba(217, 119, 6, 0.6);
       box-shadow: 0 0 10px rgba(245, 158, 11, 0.15);
       color: #fef3c7;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .animate-fade-in {
+      animation: fadeIn 0.3s ease-out forwards;
     }
   </style>
 </head>
@@ -75,14 +148,27 @@
       </div>
 
       <!-- Quiz form -->
-      <form id="quiz-form" class="hidden space-y-8">
+      <form id="quiz-form" class="hidden space-y-6">
+        <!-- Timer Progress Bar -->
+        <div id="timer-bar-container" class="space-y-2 mb-6">
+          <div class="flex justify-between items-center text-xs text-stone-400">
+            <span id="question-counter" class="font-medium text-stone-300">Question 1 of 5</span>
+            <span id="timer-text" class="font-bold text-amber-400 flex items-center gap-1">
+              ⏱️ <span id="timer-seconds">20</span>s
+            </span>
+          </div>
+          <div class="h-1.5 w-full bg-stone-900 rounded-full overflow-hidden border border-stone-800">
+            <div id="timer-progress" class="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-100" style="width: 100%;"></div>
+          </div>
+        </div>
+
         <div id="quiz-container" class="space-y-8"></div>
 
-        <div class="pt-4 border-t border-stone-850 flex flex-col sm:flex-row gap-4 justify-between items-center">
-          <p class="text-xs text-stone-500">Ensure all questions are answered before submitting.</p>
-          <button type="submit"
-            class="w-full sm:w-auto bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-semibold px-8 py-3 rounded-lg shadow-lg active:scale-[0.98] transition duration-300">
-            Submit Answers
+        <div id="quiz-actions" class="pt-4 border-t border-stone-850 flex flex-col sm:flex-row gap-4 justify-between items-center">
+          <p id="action-helper-text" class="text-xs text-stone-500">Select an option to proceed.</p>
+          <button id="action-btn" type="button" disabled
+            class="w-full sm:w-auto bg-stone-800 text-stone-500 font-semibold px-8 py-3 rounded-lg border border-stone-750 cursor-not-allowed transition duration-300">
+            Select an option
           </button>
         </div>
       </form>
@@ -114,25 +200,178 @@
         oscillator.start();
         oscillator.stop(audioCtx.currentTime + 0.08);
       }
+      const TIME_LIMIT = 20;
+      let timerInterval = null;
+      let timeLeft = TIME_LIMIT;
+      let currentQuestionIndex = 0;
+      let totalQuestions = 0;
+      let questionsData = [];
+      const answersSubmitted = {};
+
       async function loadSectionName(sectionId) {
         const response = await fetch(`/api/quiz/sections/${sectionId}`);
         const section = await response.json();
         document.getElementById('section-name-display').textContent = section.name;
       }
 
+      function updateTimerUI() {
+        const progressPercent = (timeLeft / TIME_LIMIT) * 100;
+        const progressEl = document.getElementById('timer-progress');
+        const secondsEl = document.getElementById('timer-seconds');
+        
+        if (progressEl) {
+          progressEl.style.width = `${progressPercent}%`;
+          if (timeLeft < 5) {
+            progressEl.className = 'h-full bg-red-500 transition-all duration-100';
+          } else {
+            progressEl.className = 'h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-100';
+          }
+        }
+        if (secondsEl) {
+          secondsEl.textContent = Math.ceil(timeLeft);
+        }
+      }
+
+      function startQuestion(index) {
+        currentQuestionIndex = index;
+        
+        // Show current question, hide others
+        const questionElems = document.querySelectorAll('#quiz-container > div');
+        questionElems.forEach((elem, idx) => {
+          if (idx === index) {
+            elem.classList.remove('hidden');
+          } else {
+            elem.classList.add('hidden');
+          }
+        });
+
+        // Update counter
+        document.getElementById('question-counter').textContent = `Question ${index + 1} of ${totalQuestions}`;
+
+        // Reset timer
+        clearInterval(timerInterval);
+        timeLeft = TIME_LIMIT;
+        updateTimerUI();
+
+        // Update bottom action buttons
+        updateBottomButtonState(false);
+
+        // Start countdown
+        timerInterval = setInterval(() => {
+          timeLeft -= 0.1;
+          if (timeLeft <= 0) {
+            timeLeft = 0;
+            clearInterval(timerInterval);
+            lockQuestion(index, null);
+          }
+          updateTimerUI();
+        }, 100);
+      }
+
+      function lockQuestion(questionIndex, selectedOptionValue) {
+        clearInterval(timerInterval);
+
+        const questionElem = document.querySelector(`#quiz-container > div[data-question-index="${questionIndex}"]`);
+        if (!questionElem) return;
+
+        // Disable all radio buttons for this question
+        const inputs = questionElem.querySelectorAll('input[type="radio"]');
+        inputs.forEach(input => input.disabled = true);
+
+        // Highlight correct and selected options
+        const questionData = questionsData[questionIndex];
+        const correctOption = questionData.correct_option;
+        const optionCards = questionElem.querySelectorAll('.option-card');
+        
+        optionCards.forEach((card, idx) => {
+          const optVal = idx + 1;
+          const labelDiv = card.querySelector('.option-label');
+          
+          labelDiv.classList.remove('hover:border-stone-700', 'hover:text-stone-200');
+          card.classList.remove('cursor-pointer');
+          card.classList.add('cursor-not-allowed');
+
+          if (optVal === correctOption) {
+            labelDiv.classList.remove('border-stone-800', 'bg-stone-950/40', 'text-stone-400');
+            labelDiv.classList.add('bg-emerald-950/40', 'border-emerald-500/60', 'text-emerald-300', 'shadow-sm', 'shadow-emerald-500/10');
+            
+            const checkIcon = document.createElement('span');
+            checkIcon.className = 'ml-2 text-emerald-400 font-bold';
+            checkIcon.textContent = '✅';
+            labelDiv.appendChild(checkIcon);
+          } else if (selectedOptionValue !== null && parseInt(selectedOptionValue) === optVal) {
+            labelDiv.classList.remove('border-stone-800', 'bg-stone-950/40', 'text-stone-400');
+            labelDiv.classList.add('bg-red-950/40', 'border-red-500/60', 'text-red-300', 'shadow-sm', 'shadow-red-500/10');
+            
+            const crossIcon = document.createElement('span');
+            crossIcon.className = 'ml-2 text-red-400 font-bold';
+            crossIcon.textContent = '❌';
+            labelDiv.appendChild(crossIcon);
+          }
+        });
+
+        // Show explanation if available
+        if (questionData.explanation) {
+          const explanationDiv = document.createElement('div');
+          explanationDiv.className = 'mt-4 p-4 bg-amber-950/20 border-l-2 border-amber-500/50 rounded-lg text-sm text-amber-200 animate-fade-in';
+          explanationDiv.innerHTML = `<strong>Explanation:</strong> ${questionData.explanation}`;
+          questionElem.appendChild(explanationDiv);
+        }
+
+        updateBottomButtonState(true);
+      }
+
+      function updateBottomButtonState(isLocked) {
+        const actionBtn = document.getElementById('action-btn');
+        const helperText = document.getElementById('action-helper-text');
+        
+        if (!actionBtn || !helperText) return;
+
+        if (!isLocked) {
+          actionBtn.disabled = true;
+          actionBtn.type = 'button';
+          actionBtn.textContent = 'Select an option';
+          actionBtn.className = 'w-full sm:w-auto bg-stone-800 text-stone-500 font-semibold px-8 py-3 rounded-lg border border-stone-750 cursor-not-allowed transition duration-300';
+          helperText.textContent = `Question ${currentQuestionIndex + 1} of ${totalQuestions}`;
+        } else {
+          actionBtn.disabled = false;
+          if (currentQuestionIndex < totalQuestions - 1) {
+            actionBtn.type = 'button';
+            actionBtn.textContent = 'Next Question ➡️';
+            actionBtn.className = 'w-full sm:w-auto bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-semibold px-8 py-3 rounded-lg shadow-lg active:scale-[0.98] transition duration-300 cursor-pointer';
+            helperText.textContent = 'Question complete. Ready to proceed to next.';
+          } else {
+            actionBtn.type = 'submit';
+            actionBtn.textContent = 'Submit Quiz 🎉';
+            actionBtn.className = 'w-full sm:w-auto bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold px-8 py-3 rounded-lg shadow-lg active:scale-[0.98] transition duration-300 cursor-pointer';
+            helperText.textContent = 'All questions complete. Submit to view results.';
+          }
+        }
+      }
+
       async function loadQuestions(sectionId, difficulty) {
         const response = await fetch(`/api/quiz/questions/${sectionId}/${difficulty}`);
-        const questions = await response.json();
+        questionsData = await response.json();
+        totalQuestions = questionsData.length;
 
         const loadingElem = document.getElementById('quiz-loading');
         const quizForm = document.getElementById('quiz-form');
         const quizContainer = document.getElementById('quiz-container');
 
         quizContainer.innerHTML = '';
+        
+        // Reset state
+        for (const key in answersSubmitted) {
+          delete answersSubmitted[key];
+        }
+        questionsData.forEach(question => {
+          answersSubmitted[`question-${question.id}`] = null;
+        });
 
-        questions.forEach((question, index) => {
+        questionsData.forEach((question, index) => {
           const questionElem = document.createElement('div');
-          questionElem.classList.add('p-6', 'border', 'border-stone-800', 'rounded-xl', 'bg-stone-900/30', 'space-y-4');
+          questionElem.classList.add('p-6', 'border', 'border-stone-800', 'rounded-xl', 'bg-stone-900/30', 'space-y-4', 'hidden');
+          questionElem.setAttribute('data-question-index', index);
 
           questionElem.innerHTML = `
           <div class="flex items-start gap-3">
@@ -143,7 +382,7 @@
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 ml-8">
             <!-- Option 1 -->
             <label class="option-card relative cursor-pointer block">
-              <input type="radio" name="question-${question.id}" value="1" class="sr-only" required>
+              <input type="radio" name="question-${question.id}" value="1" class="sr-only">
               <div class="option-label p-3.5 border border-stone-800 bg-stone-950/40 hover:border-stone-700 rounded-lg text-sm text-stone-400 hover:text-stone-200 transition duration-200">
                 ${question.option1}
               </div>
@@ -175,39 +414,44 @@
           </div>
         `;
           quizContainer.appendChild(questionElem);
+          
           questionElem
             .querySelectorAll('input[type="radio"]')
             .forEach(radio => {
-              radio.addEventListener('change', () => {
-                if (
-                  localStorage.getItem('soundEnabled')
-                  !== 'false'
-                ) {
+              radio.addEventListener('change', (e) => {
+                if (localStorage.getItem('soundEnabled') !== 'false') {
                   playClickSound();
                 }
+                const val = e.target.value;
+                const questionId = question.id;
+                answersSubmitted[`question-${questionId}`] = val;
+                lockQuestion(index, val);
               });
             });
         });
 
         loadingElem.classList.add('hidden');
         quizForm.classList.remove('hidden');
+
+        if (totalQuestions > 0) {
+          startQuestion(0);
+        }
       }
+
+      document.getElementById('action-btn').addEventListener('click', () => {
+        const actionBtn = document.getElementById('action-btn');
+        if (actionBtn.type === 'button' && !actionBtn.disabled) {
+          startQuestion(currentQuestionIndex + 1);
+        }
+      });
 
       document.getElementById('quiz-form').addEventListener('submit', async function (event) {
         event.preventDefault();
-        const formData = new FormData(this);
-        const data = {};
-        formData.forEach((value, key) => {
-          data[key] = value;
-        });
-
-        if (Object.keys(data).length === 0) {
-          alert('You cannot submit without answering any questions');
-          return;
-        }
+        
+        const data = { ...answersSubmitted };
 
         // Show loader on submit button
-        const submitBtn = this.querySelector('button[type="submit"]');
+        const submitBtn = document.getElementById('action-btn');
         submitBtn.disabled = true;
         submitBtn.innerHTML = `<span class="animate-pulse">Submitting...</span>`;
 
@@ -235,12 +479,39 @@
         } catch (err) {
           console.error("Error submitting quiz:", err);
           submitBtn.disabled = false;
-          submitBtn.textContent = "Submit Answers";
+          submitBtn.textContent = "Submit Quiz 🎉";
           alert("An error occurred while submitting. Please try again.");
         }
       });
 
+      function initThemeToggle() {
+        const toggleBtn = document.createElement('button');
+        toggleBtn.id = 'theme-toggle';
+        toggleBtn.className = 'fixed top-4 right-4 bg-stone-900/80 hover:bg-stone-800 text-stone-200 p-3 rounded-full border border-stone-800 hover:border-stone-700 shadow-lg active:scale-95 transition z-50 text-xl w-12 h-12 flex items-center justify-center';
+        toggleBtn.setAttribute('aria-label', 'Toggle theme');
+        
+        const isLight = document.documentElement.classList.contains('theme-light');
+        toggleBtn.textContent = isLight ? '🌙' : '☀️';
+
+        document.body.appendChild(toggleBtn);
+
+        toggleBtn.addEventListener('click', () => {
+          const currentlyLight = document.documentElement.classList.contains('theme-light');
+          if (currentlyLight) {
+            document.documentElement.classList.remove('theme-light');
+            localStorage.setItem('theme', 'dark');
+            toggleBtn.textContent = '☀️';
+          } else {
+            document.documentElement.classList.add('theme-light');
+            localStorage.setItem('theme', 'light');
+            toggleBtn.textContent = '🌙';
+          }
+        });
+      }
+
       document.addEventListener('DOMContentLoaded', () => {
+        initThemeToggle();
+
         const soundToggle = document.getElementById('sound-toggle');
 
         let soundEnabled =

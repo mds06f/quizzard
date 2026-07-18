@@ -109,3 +109,4 @@ Before opening a PR, double check:
 - [ ] The code runs without warnings in the browser console.
 - [ ] No hardcoded personal API keys or credentials exist in the codebase.
 - [ ] All unit tests pass (`npm test`).
+- [ ]  Your changes follow the spirit of our [Code of Conduct](./CODE_OF_CONDUCT.md).

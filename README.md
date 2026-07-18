@@ -119,8 +119,9 @@ npm test
 We welcome contributions of all kinds! Whether you want to fix a bug, add a new layout feature, or write questions, Quizzard is designed to be accessible.
 
 1. Review our [Good First Issues & Feature Roadmap](./ISSUES.md) to pick an open task.
-2. Review our onboarding step-by-step instructions in [CONTRIBUTING.md](./CONTRIBUTING.md).
-3. **Workflow Rules**:
+2. Review our contributing standards and scope in [CODE_OF_CONDUCT.md](./CODE_OF_CONDUCT.md).  
+3. Review our onboarding step-by-step instructions in [CONTRIBUTING.md](./CONTRIBUTING.md).
+4. **Workflow Rules**:
    - Always branch off from the `development` branch (e.g. `git checkout -b feature/your-feature development`).
    - Run tests (`npm test`) before submitting code.
    - Open a PR targeting the `development` branch of the upstream repository.

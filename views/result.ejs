@@ -5,6 +5,11 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quiz Results - Quizzard</title>
+  <script>
+    if (localStorage.getItem('theme') === 'light') {
+      document.documentElement.classList.add('theme-light');
+    }
+  </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -12,6 +17,78 @@
     rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.9.3/dist/confetti.browser.min.js"></script>
   <style>
+    /* Light/Cream Theme overrides */
+    .theme-light body {
+      background: linear-gradient(135deg, #fdfbf7 0%, #f4efe6 50%, #e9e0d2 100%);
+      color: #292524;
+    }
+    .theme-light .glass-card {
+      background: rgba(253, 251, 247, 0.75);
+      border-color: rgba(41, 37, 36, 0.08);
+      box-shadow: 0 10px 30px -10px rgba(120, 110, 90, 0.2), 0 1px 3px rgba(120, 110, 90, 0.05);
+    }
+    .theme-light h1, .theme-light h2, .theme-light h3 {
+      color: #1c1917;
+    }
+    .theme-light p, .theme-light label {
+      color: #44403c;
+    }
+    .theme-light .text-stone-300 {
+      color: #292524;
+    }
+    .theme-light .text-stone-400, .theme-light .text-stone-550, .theme-light .text-stone-500 {
+      color: #57524d;
+    }
+    .theme-light .text-stone-100 {
+      color: #1c1917;
+    }
+    .theme-light .neon-border {
+      background-color: rgba(255, 255, 255, 0.6);
+      border-color: rgba(41, 37, 36, 0.12);
+    }
+    .theme-light select, .theme-light input[type="text"], .theme-light textarea {
+      color: #1c1917;
+    }
+    .theme-light select option {
+      background-color: #fdfbf7;
+      color: #1c1917;
+    }
+    .theme-light #theme-toggle {
+      background-color: rgba(253, 251, 247, 0.8);
+      border-color: rgba(41, 37, 36, 0.1);
+      color: #1c1917;
+      box-shadow: 0 4px 12px rgba(120, 110, 90, 0.1);
+    }
+    .theme-light #theme-toggle:hover {
+      background-color: rgba(253, 251, 247, 0.95);
+    }
+    .theme-light .score-circle {
+      background: radial-gradient(circle, rgba(245, 158, 11, 0.05) 0%, rgba(217, 119, 6, 0.08) 100%);
+      border-color: rgba(217, 119, 6, 0.2);
+    }
+    .theme-light .bg-stone-900\/40, .theme-light .bg-stone-900\/80 {
+      background-color: rgba(255, 255, 255, 0.5);
+      border-color: rgba(41, 37, 36, 0.1);
+    }
+    .theme-light .border-stone-850 {
+      border-color: rgba(41, 37, 36, 0.1);
+    }
+    .theme-light .bg-amber-950\/20 {
+      background-color: rgba(245, 158, 11, 0.06);
+      border-color: rgba(245, 158, 11, 0.4);
+      color: #b45309;
+    }
+    .theme-light .text-emerald-400 {
+      color: #047857;
+    }
+    .theme-light .text-red-400 {
+      color: #b91c1c;
+    }
+    .theme-light .bg-stone-850 {
+      background-color: rgba(41, 37, 36, 0.08);
+      color: #57524d;
+    }
+
     body {
       font-family: 'Outfit', sans-serif;
     }
@@ -72,10 +149,14 @@
       </div>
 
       <!-- Action Buttons -->
-      <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4">
         <button id="btn-review"
           class="bg-stone-900/80 border border-stone-800 text-stone-300 hover:text-white font-semibold p-3.5 rounded-lg transition duration-300 hover:border-amber-500/50 active:scale-[0.99] flex items-center justify-center gap-2">
           🔍 Review Explanations
+        </button>
+        <button id="btn-share"
+          class="bg-stone-900/80 border border-stone-800 text-stone-300 hover:text-white font-semibold p-3.5 rounded-lg transition duration-300 hover:border-amber-500/50 active:scale-[0.99] flex items-center justify-center gap-2">
+          🔗 Share Score
         </button>
         <a href="/"
           class="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-semibold p-3.5 rounded-lg shadow-lg active:scale-[0.99] transition duration-300 flex items-center justify-center gap-2">
@@ -190,6 +271,41 @@
           }, 300);
         }, 400);
       }
+
+      // Share score logic
+      const urlParams = new URLSearchParams(window.location.search);
+      const sectionId = urlParams.get('sectionId');
+      let sectionName = '';
+
+      if (sectionId) {
+        fetch(`/api/quiz/sections/${sectionId}`)
+          .then(res => res.json())
+          .then(section => {
+            sectionName = section.name;
+          })
+          .catch(err => console.error("Error loading section name for sharing:", err));
+      }
+
+      const btnShare = document.getElementById('btn-share');
+      if (btnShare) {
+        btnShare.addEventListener('click', async () => {
+          const topicText = sectionName ? ` the ${sectionName}` : '';
+          const shareText = `I scored ${score}/${total} on${topicText} quiz on Quizzard! Can you beat me?`;
+
+          try {
+            await navigator.clipboard.writeText(shareText);
+            const originalText = btnShare.innerHTML;
+            btnShare.innerHTML = '✅ Copied!';
+            setTimeout(() => {
+              btnShare.innerHTML = originalText;
+            }, 2000);
+          } catch (err) {
+            console.error('Failed to copy text: ', err);
+            alert('Failed to copy score. Here it is: ' + shareText);
+          }
+        });
+      }
+
       // Review explanations logic
       const btnReview = document.getElementById('btn-review');
       const reviewSection = document.getElementById('review-section');
@@ -271,6 +387,32 @@
           reviewContainer.innerHTML = `<p class="text-xs text-red-400">Failed to load explanations.</p>`;
         }
       });
+      function initThemeToggle() {
+        const toggleBtn = document.createElement('button');
+        toggleBtn.id = 'theme-toggle';
+        toggleBtn.className = 'fixed top-4 right-4 bg-stone-900/80 hover:bg-stone-800 text-stone-200 p-3 rounded-full border border-stone-800 hover:border-stone-700 shadow-lg active:scale-95 transition z-50 text-xl w-12 h-12 flex items-center justify-center';
+        toggleBtn.setAttribute('aria-label', 'Toggle theme');
+        
+        const isLight = document.documentElement.classList.contains('theme-light');
+        toggleBtn.textContent = isLight ? '🌙' : '☀️';
+
+        document.body.appendChild(toggleBtn);
+
+        toggleBtn.addEventListener('click', () => {
+          const currentlyLight = document.documentElement.classList.contains('theme-light');
+          if (currentlyLight) {
+            document.documentElement.classList.remove('theme-light');
+            localStorage.setItem('theme', 'dark');
+            toggleBtn.textContent = '☀️';
+          } else {
+            document.documentElement.classList.add('theme-light');
+            localStorage.setItem('theme', 'light');
+            toggleBtn.textContent = '🌙';
+          }
+        });
+      }
+
+      initThemeToggle();
     });
   </script>
 </body>
