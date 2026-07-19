@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <linearGradient id="amber-orange" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#f59e0b" />
+      <stop offset="100%" stop-color="#ea580c" />
+    </linearGradient>
+  </defs>
+  <!-- Background -->
+  <rect width="512" height="512" rx="128" fill="#0c0a09" stroke="#1c1917" stroke-width="12" />
+  <!-- Cap illustration -->
+  <path d="M256 90 L80 180 L256 270 L432 180 Z" fill="url(#amber-orange)" />
+  <path d="M140 230 L140 340 C140 380, 372 380, 372 340 L372 230" fill="none" stroke="url(#amber-orange)" stroke-width="24" stroke-linecap="round" />
+  <circle cx="432" cy="230" r="16" fill="#f59e0b" />
+  <!-- Question mark text -->
+  <text x="256" y="200" font-family="system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" font-size="100" font-weight="900" fill="#ffffff" text-anchor="middle" dominant-baseline="central">?</text>
+</svg>
