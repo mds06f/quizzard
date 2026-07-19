@@ -161,6 +161,12 @@
               <option value="" disabled selected class="bg-stone-950 text-stone-400">Select a section</option>
             </select>
           </div>
+          <div class="flex justify-between items-center mt-2 px-1">
+            <span class="text-[10px] text-stone-500">Race against the clock to rank!</span>
+            <button type="button" id="btn-view-leaderboard" class="text-xs text-amber-400 hover:text-amber-300 font-semibold flex items-center gap-1 transition">
+              🏆 View Leaderboard
+            </button>
+          </div>
         </div>
 
         <div>
@@ -187,6 +193,12 @@
               <span>👥</span> Multiplayer
             </button>
           </div>
+        </div>
+
+        <!-- Timed Challenge Mode Checkbox -->
+        <div id="challenge-mode-container" class="flex items-center gap-2 mt-4 px-1">
+          <input type="checkbox" id="challenge-mode-toggle" class="w-4 h-4 rounded border-stone-800 bg-stone-950 text-amber-500 focus:ring-0 cursor-pointer">
+          <label for="challenge-mode-toggle" class="text-xs font-semibold text-stone-300 cursor-pointer select-none">⚡ TIMED CHALLENGE MODE</label>
         </div>
 
         <!-- Multiplayer Lobby Panel (Hidden initially) -->
@@ -489,6 +501,7 @@
       const sectionId = document.getElementById('section-select').value;
       const difficulty = document.getElementById('difficulty-select').value;
       const count = document.getElementById('num-questions-select').value;
+      const challengeMode = document.getElementById('challenge-mode-toggle').checked;
 
       if (!userName) return;
 
@@ -496,7 +509,18 @@
       window.localStorage.setItem('sectionId', sectionId);
       window.localStorage.setItem('difficulty', difficulty);
       window.localStorage.setItem('questionCount', count);
+      window.localStorage.setItem('challengeMode', challengeMode ? 'true' : 'false');
       window.location.href = '/quiz';
+    });
+
+    // View Leaderboard click
+    document.getElementById('btn-view-leaderboard').addEventListener('click', () => {
+      const sectionId = document.getElementById('section-select').value;
+      if (!sectionId) {
+        alert('Please select a topic first.');
+        return;
+      }
+      window.location.href = `/leaderboard/${sectionId}`;
     });
 
     // File Upload Drag and Drop implementation

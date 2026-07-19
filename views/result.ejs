@@ -148,6 +148,18 @@
         <p id="percentage-label" class="text-sm text-amber-400 font-semibold"></p>
       </div>
 
+      <!-- Timed Challenge Results Details -->
+      <div id="challenge-details" class="hidden mt-4 p-4 bg-amber-500/5 border border-amber-500/20 rounded-xl max-w-sm mx-auto space-y-2">
+        <p class="text-xs text-stone-400 font-medium">⚡ TIMED CHALLENGE METRICS</p>
+        <div class="flex justify-between items-center text-sm">
+          <span class="text-stone-300">Completion Time:</span>
+          <span id="challenge-time-val" class="font-mono text-amber-400 font-bold text-base">00:00.000</span>
+        </div>
+        <button id="btn-leaderboard-redirect" class="w-full mt-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-semibold py-2 px-4 rounded-lg shadow text-xs transition">
+          🏆 View Global Leaderboard
+        </button>
+      </div>
+
       <% if (typeof opponentName !== 'undefined' && opponentName) { %>
         <!-- Multiplayer Results comparison -->
         <div class="mt-4 p-4 bg-stone-900/60 border border-stone-850 rounded-xl max-w-sm mx-auto flex justify-between items-center text-sm">
@@ -311,6 +323,30 @@
       // Share score logic
       const urlParams = new URLSearchParams(window.location.search);
       const sectionId = urlParams.get('sectionId');
+      
+      // Timed challenge mode handling
+      const isChallenge = urlParams.get('challenge') === 'true';
+      const timeMs = parseInt(urlParams.get('timeMs'), 10);
+      
+      if (isChallenge && !isNaN(timeMs)) {
+        document.getElementById('challenge-details').classList.remove('hidden');
+        
+        const totalSec = timeMs / 1000;
+        const min = Math.floor(totalSec / 60);
+        const sec = Math.floor(totalSec % 60);
+        const msec = Math.floor(timeMs % 1000);
+        const pad = (num, size) => ('00' + num).slice(-size);
+        const formattedTime = `${pad(min, 2)}:${pad(sec, 2)}.${pad(msec, 3)}`;
+        
+        document.getElementById('challenge-time-val').textContent = formattedTime;
+        
+        document.getElementById('btn-leaderboard-redirect').addEventListener('click', () => {
+          if (sectionId) {
+            window.location.href = `/leaderboard/${sectionId}`;
+          }
+        });
+      }
+      
       let sectionName = '';
 
       function saveQuizToHistory(topic, score, total) {

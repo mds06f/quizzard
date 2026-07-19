@@ -223,6 +223,7 @@
       let totalQuestions = 0;
       let questionsData = [];
       const answersSubmitted = {};
+      let quizStartTime = null;
 
       async function loadSectionName(sectionId) {
         const response = await fetch(`/api/quiz/sections/${sectionId}`);
@@ -396,6 +397,7 @@
         const response = await fetch(`/api/quiz/questions/${sectionId}/${difficulty}?count=${count}`);
         questionsData = await response.json();
         totalQuestions = questionsData.length;
+        quizStartTime = Date.now();
 
         const loadingElem = document.getElementById('quiz-loading');
         const quizForm = document.getElementById('quiz-form');
@@ -512,16 +514,33 @@
           const userName = window.localStorage.getItem('userName');
           const sectionId = window.localStorage.getItem('sectionId');
 
-          await fetch('/api/quiz/save-result', {
-            method: 'POST',
-            body: JSON.stringify({ userName, sectionId, result }),
-            headers: { 'Content-Type': 'application/json' }
-          });
+          // Check if challenge mode is active
+          const isChallenge = window.localStorage.getItem('challengeMode') === 'true';
+          if (isChallenge && quizStartTime) {
+            const elapsed = Date.now() - quizStartTime;
+            
+            // Save challenge score with time
+            await fetch('/api/quiz/save-challenge', {
+              method: 'POST',
+              body: JSON.stringify({ userName, sectionId, result, timeMs: elapsed }),
+              headers: { 'Content-Type': 'application/json' }
+            });
+            
+            // Save answers and redirect with challenge flag
+            window.localStorage.setItem('userAnswers', JSON.stringify(data));
+            window.location.href = `/result?score=${result.score}&total=${result.total}&sectionId=${sectionId}&challenge=true&timeMs=${elapsed}`;
+          } else {
+            // Save standard score
+            await fetch('/api/quiz/save-result', {
+              method: 'POST',
+              body: JSON.stringify({ userName, sectionId, result }),
+              headers: { 'Content-Type': 'application/json' }
+            });
 
-          // Save user answers for explanations review
-          window.localStorage.setItem('userAnswers', JSON.stringify(data));
-
-          window.location.href = `/result?score=${result.score}&total=${result.total}&sectionId=${sectionId}`;
+            // Save user answers for explanations review
+            window.localStorage.setItem('userAnswers', JSON.stringify(data));
+            window.location.href = `/result?score=${result.score}&total=${result.total}&sectionId=${sectionId}`;
+          }
         } catch (err) {
           console.error("Error submitting quiz:", err);
           submitBtn.disabled = false;
