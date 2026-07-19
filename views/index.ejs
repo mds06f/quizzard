@@ -425,11 +425,12 @@
           </div>
           
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 ml-8">
-            ${optionsList.map(opt => `
+            ${optionsList.map((opt, optIdx) => `
               <label class="option-card relative cursor-pointer block">
                 <input type="radio" name="question-${question.id}" value="${opt.val}" class="sr-only">
-                <div class="option-label p-3.5 border border-stone-800 bg-stone-950/40 hover:border-stone-700 rounded-lg text-sm text-stone-400 hover:text-stone-200 transition duration-200">
-                  ${opt.text}
+                <div class="option-label p-3.5 border border-stone-800 bg-stone-950/40 hover:border-stone-700 rounded-lg text-sm text-stone-400 hover:text-stone-200 transition duration-200 flex items-center">
+                  <span class="inline-block bg-stone-800 text-stone-500 text-[10px] font-mono px-1.5 py-0.5 rounded mr-2.5 border border-stone-750 font-bold flex-shrink-0">${optIdx + 1}</span>
+                  <span>${opt.text}</span>
                 </div>
               </label>
             `).join('')}
@@ -571,6 +572,38 @@
         document.getElementById('user-name-display').textContent = userName;
         loadSectionName(sectionId);
         loadQuestions(sectionId, difficulty);
+
+        // Keyboard Navigation Support
+        document.addEventListener('keydown', (e) => {
+          if (document.activeElement.tagName === 'INPUT' || document.activeElement.tagName === 'TEXTAREA') {
+            return;
+          }
+
+          const key = e.key;
+
+          if (['1', '2', '3', '4'].includes(key)) {
+            const optionIndex = parseInt(key, 10) - 1;
+            const currentQuestionElem = document.querySelector(`#quiz-container > div[data-question-index="${currentQuestionIndex}"]`);
+            if (currentQuestionElem) {
+              const cards = currentQuestionElem.querySelectorAll('.option-card');
+              if (cards && cards[optionIndex]) {
+                const radio = cards[optionIndex].querySelector('input[type="radio"]');
+                if (radio && !radio.disabled) {
+                  radio.checked = true;
+                  radio.dispatchEvent(new Event('change'));
+                }
+              }
+            }
+          }
+
+          if (key === 'Enter' || key === ' ') {
+            e.preventDefault();
+            const actionBtn = document.getElementById('action-btn');
+            if (actionBtn && !actionBtn.disabled) {
+              actionBtn.click();
+            }
+          }
+        });
       });
     </script>
 </body>
