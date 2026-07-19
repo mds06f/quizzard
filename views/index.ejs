@@ -403,10 +403,20 @@
         }
       }
 
-      async function loadQuestions(sectionId, difficulty) {
-        const count = window.localStorage.getItem('questionCount') || '5';
-        const response = await fetch(`/api/quiz/questions/${sectionId}/${difficulty}?count=${count}`);
-        questionsData = await response.json();
+      async function loadQuestions(sectionId, difficulty, isReview = false) {
+        if (isReview) {
+          const reviewIds = JSON.parse(window.localStorage.getItem('activeReviewQuestionIds') || '[]');
+          const response = await fetch('/api/quiz/questions-by-ids', {
+            method: 'POST',
+            body: JSON.stringify({ ids: reviewIds }),
+            headers: { 'Content-Type': 'application/json' }
+          });
+          questionsData = await response.json();
+        } else {
+          const count = window.localStorage.getItem('questionCount') || '5';
+          const response = await fetch(`/api/quiz/questions/${sectionId}/${difficulty}?count=${count}`);
+          questionsData = await response.json();
+        }
         totalQuestions = questionsData.length;
         quizStartTime = Date.now();
 
@@ -527,7 +537,13 @@
 
           // Check if challenge mode is active
           const isChallenge = window.localStorage.getItem('challengeMode') === 'true';
-          if (isChallenge && quizStartTime) {
+          const urlParams = new URLSearchParams(window.location.search);
+          const isReview = urlParams.get('review') === 'true';
+
+          if (isReview) {
+            window.localStorage.setItem('userAnswers', JSON.stringify(data));
+            window.location.href = `/result?score=${result.score}&total=${result.total}&review=true`;
+          } else if (isChallenge && quizStartTime) {
             const elapsed = Date.now() - quizStartTime;
             
             // Save challenge score with time
@@ -610,6 +626,20 @@
         const userName = window.localStorage.getItem('userName');
         const sectionId = window.localStorage.getItem('sectionId');
         const difficulty = window.localStorage.getItem('difficulty');
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const isReview = urlParams.get('review') === 'true';
+
+        if (isReview) {
+          if (!userName) {
+            window.location.href = '/';
+            return;
+          }
+          document.getElementById('user-name-display').textContent = userName;
+          document.getElementById('section-name-display').textContent = 'Spaced Repetition Review';
+          loadQuestions(null, null, true);
+          return;
+        }
 
         if (!userName || !sectionId || !difficulty) {
           window.location.href = '/';

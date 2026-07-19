@@ -165,7 +165,10 @@
           <span>📖</span> Standard Quizzes
         </button>
         <button type="button" id="tab-ai" class="flex-1 pb-3 text-sm font-medium border-b-2 border-transparent text-stone-400 hover:text-stone-200 transition duration-300 flex items-center justify-center gap-2">
-          <span>✨</span> AI Study Buddy <span class="bg-amber-500/20 text-amber-300 text-[10px] px-1.5 py-0.5 rounded font-bold uppercase tracking-wider">New</span>
+          <span>✨</span> AI Buddy
+        </button>
+        <button type="button" id="tab-spaced" class="flex-1 pb-3 text-sm font-medium border-b-2 border-transparent text-stone-400 hover:text-stone-200 transition duration-300 flex items-center justify-center gap-2">
+          <span>🧠</span> Review <span id="spaced-badge" class="hidden bg-amber-500 text-stone-950 text-[9px] px-1.5 py-0.5 rounded-full font-extrabold">0</span>
         </button>
         <button type="button" id="tab-history" class="flex-1 pb-3 text-sm font-medium border-b-2 border-transparent text-stone-400 hover:text-stone-200 transition duration-300 flex items-center justify-center gap-2">
           <span>📜</span> History
@@ -373,6 +376,21 @@
         </div>
       </div>
 
+      <!-- Spaced Review Panel (Hidden initially) -->
+      <div id="spaced-panel" class="hidden space-y-6">
+        <div class="p-6 bg-stone-900/40 border border-stone-850 rounded-2xl text-center space-y-4">
+          <span class="text-4xl inline-block animate-bounce">🧠</span>
+          <div>
+            <h3 class="text-lg font-bold text-white">Spaced Repetition Review</h3>
+            <p id="spaced-due-summary" class="text-xs text-stone-400 mt-1">Calculating due items...</p>
+          </div>
+          
+          <button id="btn-start-review" type="button" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-semibold py-3 px-4 rounded-lg shadow-lg active:scale-[0.99] transition duration-300 flex items-center justify-center gap-2">
+            🚀 Start Spaced Review
+          </button>
+        </div>
+      </div>
+
     </div>
   </div>
 
@@ -380,9 +398,11 @@
     // Elements
     const tabStandard = document.getElementById('tab-standard');
     const tabAI = document.getElementById('tab-ai');
+    const tabSpaced = document.getElementById('tab-spaced');
     const tabHistory = document.getElementById('tab-history');
     const standardForm = document.getElementById('standard-form');
     const aiForm = document.getElementById('ai-form');
+    const spacedPanel = document.getElementById('spaced-panel');
     const historyPanel = document.getElementById('history-panel');
     const historyList = document.getElementById('history-list');
     const btnClearHistory = document.getElementById('btn-clear-history');
@@ -411,9 +431,11 @@
     tabStandard.addEventListener('click', () => {
       tabStandard.classList.add('tab-active', 'border-amber-500');
       tabAI.classList.remove('tab-active', 'border-amber-500');
+      tabSpaced.classList.remove('tab-active', 'border-amber-500');
       tabHistory.classList.remove('tab-active', 'border-amber-500');
       standardForm.classList.remove('hidden');
       aiForm.classList.add('hidden');
+      spacedPanel.classList.add('hidden');
       historyPanel.classList.add('hidden');
       errorContainer.classList.add('hidden');
     });
@@ -421,23 +443,83 @@
     tabAI.addEventListener('click', () => {
       tabAI.classList.add('tab-active', 'border-amber-500');
       tabStandard.classList.remove('tab-active', 'border-amber-500');
+      tabSpaced.classList.remove('tab-active', 'border-amber-500');
       tabHistory.classList.remove('tab-active', 'border-amber-500');
       aiForm.classList.remove('hidden');
       standardForm.classList.add('hidden');
+      spacedPanel.classList.add('hidden');
       historyPanel.classList.add('hidden');
       errorContainer.classList.add('hidden');
+    });
+
+    tabSpaced.addEventListener('click', () => {
+      tabSpaced.classList.add('tab-active', 'border-amber-500');
+      tabStandard.classList.remove('tab-active', 'border-amber-500');
+      tabAI.classList.remove('tab-active', 'border-amber-500');
+      tabHistory.classList.remove('tab-active', 'border-amber-500');
+      spacedPanel.classList.remove('hidden');
+      standardForm.classList.add('hidden');
+      aiForm.classList.add('hidden');
+      historyPanel.classList.add('hidden');
+      errorContainer.classList.add('hidden');
+      updateSpacedReviewUI();
     });
 
     tabHistory.addEventListener('click', () => {
       tabHistory.classList.add('tab-active', 'border-amber-500');
       tabStandard.classList.remove('tab-active', 'border-amber-500');
       tabAI.classList.remove('tab-active', 'border-amber-500');
+      tabSpaced.classList.remove('tab-active', 'border-amber-500');
       historyPanel.classList.remove('hidden');
       standardForm.classList.add('hidden');
       aiForm.classList.add('hidden');
+      spacedPanel.classList.add('hidden');
       errorContainer.classList.add('hidden');
       renderHistory();
     });
+
+    function updateSpacedReviewUI() {
+      const sm2Data = JSON.parse(localStorage.getItem('sm2Data') || '{}');
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      const todayTime = today.getTime();
+      
+      let dueIds = [];
+      for (const qId in sm2Data) {
+        if (sm2Data[qId].dueDate <= todayTime) {
+          dueIds.push(parseInt(qId, 10));
+        }
+      }
+      
+      const badge = document.getElementById('spaced-badge');
+      const summary = document.getElementById('spaced-due-summary');
+      const btnStart = document.getElementById('btn-start-review');
+      
+      if (badge) {
+        if (dueIds.length > 0) {
+          badge.textContent = dueIds.length;
+          badge.classList.remove('hidden');
+        } else {
+          badge.classList.add('hidden');
+        }
+      }
+      
+      if (summary) {
+        if (dueIds.length > 0) {
+          summary.textContent = `You have ${dueIds.length} review items due today. Boost your retention!`;
+          if (btnStart) {
+            btnStart.disabled = false;
+            btnStart.classList.remove('opacity-50', 'cursor-not-allowed');
+          }
+        } else {
+          summary.textContent = `All caught up! You have 0 questions due for review today. 🎉`;
+          if (btnStart) {
+            btnStart.disabled = true;
+            btnStart.classList.add('opacity-50', 'cursor-not-allowed');
+          }
+        }
+      }
+    }
 
     function renderHistory() {
       const history = JSON.parse(localStorage.getItem('quizHistory') || '[]');
@@ -984,6 +1066,35 @@
       }
 
       autoCalibrateDifficulty();
+
+      updateSpacedReviewUI();
+
+      // Bind Spaced Repetition action
+      document.getElementById('btn-start-review').addEventListener('click', () => {
+        const sm2Data = JSON.parse(localStorage.getItem('sm2Data') || '{}');
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const todayTime = today.getTime();
+        
+        let dueIds = [];
+        for (const qId in sm2Data) {
+          if (sm2Data[qId].dueDate <= todayTime) {
+            dueIds.push(parseInt(qId, 10));
+          }
+        }
+        
+        if (dueIds.length === 0) return;
+        
+        dueIds.sort(() => 0.5 - Math.random());
+        const selectedReviewIds = dueIds.slice(0, 10);
+        
+        const userName = userNameInput.value.trim() || 'Reviewer';
+        window.localStorage.setItem('userName', userName);
+        window.localStorage.setItem('activeReviewQuestionIds', JSON.stringify(selectedReviewIds));
+        window.localStorage.setItem('challengeMode', 'false');
+        
+        window.location.href = `/quiz?review=true`;
+      });
 
       loadSections();
     });
