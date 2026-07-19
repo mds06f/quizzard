@@ -16,7 +16,18 @@ app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
+const session = require('express-session');
+const adminRoutes = require('./routes/adminRoutes');
+
+app.use(session({
+  secret: 'quizzard-secret-key-13579',
+  resave: false,
+  saveUninitialized: true,
+  cookie: { secure: false }
+}));
+
 app.use('/api/quiz', quizRoutes);
+app.use('/admin', adminRoutes);
 
 app.get('/', (req, res) => {
   res.render('welcome');
