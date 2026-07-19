@@ -292,13 +292,39 @@
       const sectionId = urlParams.get('sectionId');
       let sectionName = '';
 
+      function saveQuizToHistory(topic, score, total) {
+        // Prevent double saving if user refreshes the result page
+        const sessionSavedKey = `history_saved_${window.location.search}`;
+        if (sessionStorage.getItem(sessionSavedKey)) return;
+        sessionStorage.setItem(sessionSavedKey, 'true');
+
+        let history = JSON.parse(localStorage.getItem('quizHistory') || '[]');
+        const attempt = {
+          topic: topic || 'Custom AI Quiz',
+          score: score,
+          total: total,
+          date: new Date().toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+        };
+        // Add to front of list
+        history.unshift(attempt);
+        // Keep last 15
+        history = history.slice(0, 15);
+        localStorage.setItem('quizHistory', JSON.stringify(history));
+      }
+
       if (sectionId) {
         fetch(`/api/quiz/sections/${sectionId}`)
           .then(res => res.json())
           .then(section => {
             sectionName = section.name;
+            saveQuizToHistory(sectionName, score, total);
           })
-          .catch(err => console.error("Error loading section name for sharing:", err));
+          .catch(err => {
+            console.error("Error loading section name for sharing:", err);
+            saveQuizToHistory('Custom AI Quiz', score, total);
+          });
+      } else {
+        saveQuizToHistory('Custom AI Quiz', score, total);
       }
 
       const btnShare = document.getElementById('btn-share');
