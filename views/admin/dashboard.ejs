@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard - Quizzard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Outfit', sans-serif;
+    }
+    .neon-border:focus-within {
+      box-shadow: 0 0 10px rgba(245, 158, 11, 0.15);
+      border-color: rgba(245, 158, 11, 0.5);
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-stone-950 text-stone-100 flex flex-col relative overflow-x-hidden">
+  <!-- Glow blobs -->
+  <div class="absolute -top-40 -left-40 w-96 h-96 bg-amber-600/5 rounded-full blur-3xl -z-10"></div>
+  <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-orange-600/5 rounded-full blur-3xl -z-10"></div>
+
+  <!-- Header -->
+  <header class="border-b border-stone-850 bg-stone-900/40 backdrop-blur-md sticky top-0 z-30">
+    <div class="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
+      <div class="flex items-center gap-3">
+        <span class="text-2xl">🛠️</span>
+        <div>
+          <h1 class="text-lg font-bold tracking-tight text-white">Quizzard Admin</h1>
+          <p class="text-[10px] text-stone-500 tracking-wider uppercase font-semibold">Content Management</p>
+        </div>
+      </div>
+      <div class="flex items-center gap-3">
+        <a href="/" class="text-xs text-stone-400 hover:text-white transition">View App</a>
+        <a href="/admin/logout" class="bg-stone-800 hover:bg-stone-750 text-stone-300 hover:text-white px-3 py-1.5 rounded-lg text-xs font-semibold border border-stone-700 transition">
+          Logout
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Dashboard Container -->
+  <main class="max-w-7xl mx-auto px-4 py-8 flex-1 grid grid-cols-1 lg:grid-cols-12 gap-8 w-full">
+    <!-- Sidebar - Section List -->
+    <section class="lg:col-span-4 space-y-6">
+      <div class="bg-stone-900/60 border border-stone-850 p-6 rounded-2xl shadow-xl backdrop-blur-md space-y-4">
+        <div class="flex justify-between items-center pb-2 border-b border-stone-850">
+          <h2 class="text-sm font-bold text-stone-300 uppercase tracking-wider">Topics</h2>
+          <button onclick="toggleModal('add-section-modal')" class="bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 font-bold px-2.5 py-1 rounded text-xs border border-amber-500/30 transition">
+            + Add
+          </button>
+        </div>
+
+        <div class="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+          <% sections.forEach(section => { %>
+            <div class="group flex justify-between items-center p-3 rounded-lg border border-stone-800 bg-stone-950/40 hover:border-stone-750 hover:bg-stone-950/60 transition cursor-pointer"
+                 onclick="selectSection('<%= section.id %>')">
+              <span class="text-sm font-medium text-stone-200 truncate pr-2"><%= section.name %></span>
+              <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition duration-200">
+                <button onclick="e => e.stopPropagation(); editSection('<%= section.id %>', '<%= section.name %>')" class="text-xs text-stone-400 hover:text-amber-400 transition" title="Rename">✏️</button>
+                <form action="/admin/sections/<%= section.id %>/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this topic and all its questions?')" class="inline">
+                  <button type="submit" onclick="e => e.stopPropagation()" class="text-xs text-stone-400 hover:text-red-400 transition" title="Delete">🗑️</button>
+                </form>
+              </div>
+            </div>
+          <% }) %>
+        </div>
+      </div>
+    </section>
+
+    <!-- Main Content - Question List -->
+    <section class="lg:col-span-8 space-y-6">
+      <div class="bg-stone-900/60 border border-stone-850 p-6 rounded-2xl shadow-xl backdrop-blur-md space-y-6">
+        <div class="flex justify-between items-center pb-2 border-b border-stone-850">
+          <div>
+            <h2 id="active-section-title" class="text-sm font-bold text-stone-300 uppercase tracking-wider">All Questions</h2>
+            <p id="question-count-label" class="text-[10px] text-stone-500 mt-0.5">Total Questions: <%= questions.length %></p>
+          </div>
+          <button id="btn-add-question" onclick="openAddQuestionModal()" class="bg-amber-600 hover:bg-amber-500 text-white font-semibold px-3 py-1.5 rounded-lg text-xs shadow transition">
+            + Create Question
+          </button>
+        </div>
+
+        <div id="questions-list-container" class="space-y-4 max-h-[600px] overflow-y-auto pr-1">
+          <% questions.forEach((q, idx) => { %>
+            <div class="question-item p-4 rounded-xl border border-stone-800 bg-stone-950/30 hover:border-stone-750 transition space-y-3" data-section-id="<%= q.section_id %>">
+              <div class="flex justify-between items-start gap-3">
+                <div class="flex items-start gap-2.5">
+                  <span class="bg-stone-850 border border-stone-800 text-stone-400 text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5"><%= idx + 1 %></span>
+                  <div>
+                    <h3 class="text-sm font-medium text-stone-200"><%= q.question %></h3>
+                    <div class="flex gap-2 mt-1.5 flex-wrap">
+                      <span class="text-[9px] font-bold uppercase tracking-wider bg-stone-850 text-stone-400 px-2 py-0.5 rounded border border-stone-800">
+                        <%= q.difficulty %>
+                      </span>
+                      <% if (q.category) { %>
+                        <span class="text-[9px] font-bold uppercase tracking-wider bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded border border-amber-500/10">
+                          <%= q.category %>
+                        </span>
+                      <% } %>
+                    </div>
+                  </div>
+                </div>
+                <div class="flex gap-3 flex-shrink-0">
+                  <button onclick="openEditQuestionModal('<%= JSON.stringify(q).replace(/'/g, '\\\'').replace(/"/g, '&quot;') %>')" class="text-xs text-stone-400 hover:text-amber-400 transition">Edit</button>
+                  <form action="/admin/questions/<%= q.id %>/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this question?')" class="inline">
+                    <button type="submit" class="text-xs text-stone-400 hover:text-red-400 transition">Delete</button>
+                  </form>
+                </div>
+              </div>
+
+              <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs pl-7 text-stone-400">
+                <p class="<%= q.correct_option === 1 ? 'text-emerald-400 font-semibold' : '' %>">A: <%= q.option1 %></p>
+                <p class="<%= q.correct_option === 2 ? 'text-emerald-400 font-semibold' : '' %>">B: <%= q.option2 %></p>
+                <p class="<%= q.correct_option === 3 ? 'text-emerald-400 font-semibold' : '' %>">C: <%= q.option3 %></p>
+                <p class="<%= q.correct_option === 4 ? 'text-emerald-400 font-semibold' : '' %>">D: <%= q.option4 %></p>
+              </div>
+
+              <% if (q.explanation) { %>
+                <div class="text-[11px] text-stone-500 bg-stone-900/30 p-2.5 rounded border border-stone-850/50 mt-2 pl-3 border-l-2 border-l-amber-500/40">
+                  <strong>Explanation:</strong> <%= q.explanation %>
+                </div>
+              <% } %>
+            </div>
+          <% }) %>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- Add Section Modal -->
+  <div id="add-section-modal" class="hidden fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-850">
+        <h3 class="text-sm font-bold text-stone-200 uppercase tracking-wider">Create New Topic</h3>
+        <button onclick="toggleModal('add-section-modal')" class="text-stone-500 hover:text-stone-300">✕</button>
+      </div>
+      <form action="/admin/sections" method="POST" class="space-y-4">
+        <div>
+          <label for="section-name" class="block text-xs font-semibold text-stone-400 mb-2 uppercase tracking-wide">Topic Name</label>
+          <input type="text" id="section-name" name="name" required class="w-full p-2.5 bg-stone-950 border border-stone-800 focus:border-amber-500 focus:outline-none rounded-lg text-sm text-stone-200">
+        </div>
+        <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2 px-4 rounded-lg shadow text-sm transition">
+          Create Topic
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Edit Section Modal -->
+  <div id="edit-section-modal" class="hidden fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-850">
+        <h3 class="text-sm font-bold text-stone-200 uppercase tracking-wider">Rename Topic</h3>
+        <button onclick="toggleModal('edit-section-modal')" class="text-stone-500 hover:text-stone-300">✕</button>
+      </div>
+      <form id="edit-section-form" action="" method="POST" class="space-y-4">
+        <div>
+          <label for="edit-section-name" class="block text-xs font-semibold text-stone-400 mb-2 uppercase tracking-wide">Topic Name</label>
+          <input type="text" id="edit-section-name" name="name" required class="w-full p-2.5 bg-stone-950 border border-stone-800 focus:border-amber-500 focus:outline-none rounded-lg text-sm text-stone-200">
+        </div>
+        <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2 px-4 rounded-lg shadow text-sm transition">
+          Save Changes
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Question Modal (Used for both Add & Edit) -->
+  <div id="question-modal" class="hidden fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
+    <div class="max-w-2xl w-full bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-2xl space-y-4 my-8">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-850">
+        <h3 id="question-modal-title" class="text-sm font-bold text-stone-200 uppercase tracking-wider">Create Question</h3>
+        <button onclick="toggleModal('question-modal')" class="text-stone-500 hover:text-stone-300">✕</button>
+      </div>
+      <form id="question-form" action="/admin/questions" method="POST" class="space-y-4">
+        <input type="hidden" id="form-action-override" value="">
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label for="q-section-id" class="block text-xs font-semibold text-stone-400 mb-1.5 uppercase tracking-wide">Select Topic</label>
+            <select id="q-section-id" name="section_id" required class="w-full p-2.5 bg-stone-950 border border-stone-800 rounded-lg text-xs text-stone-200">
+              <% sections.forEach(section => { %>
+                <option value="<%= section.id %>"><%= section.name %></option>
+              <% }) %>
+            </select>
+          </div>
+          <div>
+            <label for="q-difficulty" class="block text-xs font-semibold text-stone-400 mb-1.5 uppercase tracking-wide">Difficulty</label>
+            <select id="q-difficulty" name="difficulty" required class="w-full p-2.5 bg-stone-950 border border-stone-800 rounded-lg text-xs text-stone-200">
+              <option value="easy">Easy</option>
+              <option value="medium" selected>Medium</option>
+              <option value="hard">Hard</option>
+            </select>
+          </div>
+        </div>
+
+        <div>
+          <label for="q-text" class="block text-xs font-semibold text-stone-400 mb-1.5 uppercase tracking-wide">Question Content</label>
+          <textarea id="q-text" name="question" required rows="2" class="w-full p-2.5 bg-stone-950 border border-stone-800 focus:border-amber-500 focus:outline-none rounded-lg text-sm text-stone-200"></textarea>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label for="q-opt1" class="block text-xs font-semibold text-stone-400 mb-1.5 uppercase tracking-wide">Option 1</label>
+            <input type="text" id="q-opt1" name="option1" required class="w-full p-2 bg-stone-950 border border-stone-800 rounded-lg text-xs text-stone-200">
+          </div>
+          <div>
+            <label for="q-opt2" class="block text-xs font-semibold text-stone-400 mb-1.5 uppercase tracking-wide">Option 2</label>
+            <input type="text" id="q-opt2" name="option2" required class="w-full p-2 bg-stone-950 border border-stone-800 rounded-lg text-xs text-stone-200">
+          </div>
+          <div>
+            <label for="q-opt3" class="block text-xs font-semibold text-stone-400 mb-1.5 uppercase tracking-wide">Option 3</label>
+            <input type="text" id="q-opt3" name="option3" required class="w-full p-2 bg-stone-950 border border-stone-800 rounded-lg text-xs text-stone-200">
+          </div>
+          <div>
+            <label for="q-opt4" class="block text-xs font-semibold text-stone-400 mb-1.5 uppercase tracking-wide">Option 4</label>
+            <input type="text" id="q-opt4" name="option4" required class="w-full p-2 bg-stone-950 border border-stone-800 rounded-lg text-xs text-stone-200">
+          </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label for="q-correct" class="block text-xs font-semibold text-stone-400 mb-1.5 uppercase tracking-wide">Correct Option</label>
+            <select id="q-correct" name="correct_option" required class="w-full p-2.5 bg-stone-950 border border-stone-800 rounded-lg text-xs text-stone-200">
+              <option value="1">Option 1 (A)</option>
+              <option value="2">Option 2 (B)</option>
+              <option value="3">Option 3 (C)</option>
+              <option value="4">Option 4 (D)</option>
+            </select>
+          </div>
+          <div>
+            <label for="q-category" class="block text-xs font-semibold text-stone-400 mb-1.5 uppercase tracking-wide">Subtopic Category</label>
+            <input type="text" id="q-category" name="category" placeholder="e.g. Loops, Functions" class="w-full p-2 bg-stone-950 border border-stone-800 rounded-lg text-xs text-stone-200">
+          </div>
+        </div>
+
+        <div>
+          <label for="q-explanation" class="block text-xs font-semibold text-stone-400 mb-1.5 uppercase tracking-wide">Explanation (Optional)</label>
+          <textarea id="q-explanation" name="explanation" rows="2" class="w-full p-2.5 bg-stone-950 border border-stone-800 focus:border-amber-500 focus:outline-none rounded-lg text-xs text-stone-200"></textarea>
+        </div>
+
+        <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2.5 px-4 rounded-lg shadow text-sm transition">
+          Save Question
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    let activeSectionId = null;
+
+    function selectSection(sectionId) {
+      activeSectionId = sectionId;
+      
+      // Update UI selection style
+      document.querySelectorAll('[onclick^="selectSection"]').forEach(el => {
+        el.classList.remove('border-amber-500/50', 'bg-stone-900/50');
+      });
+      const selectedEl = Array.from(document.querySelectorAll('[onclick^="selectSection"]')).find(el => {
+        return el.outerHTML.includes(`selectSection('${sectionId}')`) || el.outerHTML.includes(`selectSection("${sectionId}")`);
+      });
+      if (selectedEl) {
+        selectedEl.classList.add('border-amber-500/50', 'bg-stone-900/50');
+      }
+
+      // Filter questions in list
+      let visibleCount = 0;
+      document.querySelectorAll('.question-item').forEach(q => {
+        if (q.getAttribute('data-section-id') === sectionId) {
+          q.classList.remove('hidden');
+          visibleCount++;
+        } else {
+          q.classList.add('hidden');
+        }
+      });
+
+      // Update titles
+      const sectionName = selectedEl ? selectedEl.querySelector('span').textContent : 'All Questions';
+      document.getElementById('active-section-title').textContent = sectionName;
+      document.getElementById('question-count-label').textContent = `Questions in Topic: ${visibleCount}`;
+    }
+
+    function toggleModal(modalId) {
+      document.getElementById(modalId).classList.toggle('hidden');
+    }
+
+    function editSection(id, name) {
+      const modal = document.getElementById('edit-section-modal');
+      const form = document.getElementById('edit-section-form');
+      const input = document.getElementById('edit-section-name');
+
+      form.action = `/admin/sections/${id}/edit`;
+      input.value = name;
+      modal.classList.remove('hidden');
+    }
+
+    function openAddQuestionModal() {
+      const modal = document.getElementById('question-modal');
+      document.getElementById('question-modal-title').textContent = 'Create Question';
+      document.getElementById('question-form').action = '/admin/questions';
+      
+      // Reset input fields
+      document.getElementById('q-text').value = '';
+      document.getElementById('q-opt1').value = '';
+      document.getElementById('q-opt2').value = '';
+      document.getElementById('q-opt3').value = '';
+      document.getElementById('q-opt4').value = '';
+      document.getElementById('q-correct').value = '1';
+      document.getElementById('q-difficulty').value = 'medium';
+      document.getElementById('q-category').value = '';
+      document.getElementById('q-explanation').value = '';
+
+      if (activeSectionId) {
+        document.getElementById('q-section-id').value = activeSectionId;
+      }
+
+      modal.classList.remove('hidden');
+    }
+
+    function openEditQuestionModal(qDataStr) {
+      const q = JSON.parse(qDataStr);
+      const modal = document.getElementById('question-modal');
+      document.getElementById('question-modal-title').textContent = 'Edit Question';
+      document.getElementById('question-form').action = `/admin/questions/${q.id}/edit`;
+
+      document.getElementById('q-section-id').value = q.section_id;
+      document.getElementById('q-text').value = q.question;
+      document.getElementById('q-opt1').value = q.option1;
+      document.getElementById('q-opt2').value = q.option2;
+      document.getElementById('q-opt3').value = q.option3;
+      document.getElementById('q-opt4').value = q.option4;
+      document.getElementById('q-correct').value = q.correct_option;
+      document.getElementById('q-difficulty').value = q.difficulty;
+      document.getElementById('q-category').value = q.category || '';
+      document.getElementById('q-explanation').value = q.explanation || '';
+
+      modal.classList.remove('hidden');
+    }
+
+    // Default selection
+    const firstSection = document.querySelector('[onclick^="selectSection"]');
+    if (firstSection) {
+      firstSection.click();
+    }
+  </script>
+</body>
+</html>

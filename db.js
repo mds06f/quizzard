@@ -193,6 +193,143 @@ const db = {
 
     writeData(data);
     return newSectionId;
+  },
+
+  // Get all sections, including AI sections
+  getAllSections: async () => {
+    const data = readData();
+    return data.sections;
+  },
+
+  // Get all questions
+  getAllQuestions: async () => {
+    const data = readData();
+    return data.questions;
+  },
+
+  // Add Section
+  addSection: async (name) => {
+    const data = readData();
+    const newSection = {
+      id: data.sections.length > 0 ? Math.max(...data.sections.map(s => s.id)) + 1 : 1,
+      name: name
+    };
+    data.sections.push(newSection);
+    writeData(data);
+    return newSection;
+  },
+
+  // Update Section
+  updateSection: async (id, name) => {
+    const data = readData();
+    const sectionId = parseInt(id, 10);
+    const section = data.sections.find(s => s.id === sectionId);
+    if (section) {
+      section.name = name;
+      writeData(data);
+      return section;
+    }
+    throw new Error('Section not found');
+  },
+
+  // Delete Section
+  deleteSection: async (id) => {
+    const data = readData();
+    const sectionId = parseInt(id, 10);
+    data.sections = data.sections.filter(s => s.id !== sectionId);
+    data.questions = data.questions.filter(q => q.section_id !== sectionId);
+    writeData(data);
+    return true;
+  },
+
+  // Add Question
+  addQuestion: async (secId, qData) => {
+    const data = readData();
+    const newQuestion = {
+      id: data.questions.length > 0 ? Math.max(...data.questions.map(q => q.id)) + 1 : 1,
+      section_id: parseInt(secId, 10),
+      question: qData.question,
+      option1: qData.option1,
+      option2: qData.option2,
+      option3: qData.option3,
+      option4: qData.option4,
+      correct_option: parseInt(qData.correct_option, 10),
+      difficulty: qData.difficulty || 'medium',
+      explanation: qData.explanation || '',
+      category: qData.category || ''
+    };
+    data.questions.push(newQuestion);
+    writeData(data);
+    return newQuestion;
+  },
+
+  // Update Question
+  updateQuestion: async (id, updates) => {
+    const data = readData();
+    const qId = parseInt(id, 10);
+    const question = data.questions.find(q => q.id === qId);
+    if (question) {
+      if (updates.question !== undefined) question.question = updates.question;
+      if (updates.option1 !== undefined) question.option1 = updates.option1;
+      if (updates.option2 !== undefined) question.option2 = updates.option2;
+      if (updates.option3 !== undefined) question.option3 = updates.option3;
+      if (updates.option4 !== undefined) question.option4 = updates.option4;
+      if (updates.correct_option !== undefined) question.correct_option = parseInt(updates.correct_option, 10);
+      if (updates.difficulty !== undefined) question.difficulty = updates.difficulty;
+      if (updates.explanation !== undefined) question.explanation = updates.explanation;
+      if (updates.category !== undefined) question.category = updates.category;
+      
+      writeData(data);
+      return question;
+    }
+    throw new Error('Question not found');
+  },
+
+  // Delete Question
+  deleteQuestion: async (id) => {
+    const data = readData();
+    const qId = parseInt(id, 10);
+    data.questions = data.questions.filter(q => q.id !== qId);
+    writeData(data);
+    return true;
+  },
+
+  // Save challenge results
+  saveChallengeResult: async (userName, sectionId, score, total, timeMs) => {
+    const data = readData();
+    if (!data.challenge_leaderboard) {
+      data.challenge_leaderboard = [];
+    }
+    const newEntry = {
+      id: data.challenge_leaderboard.length > 0 ? Math.max(...data.challenge_leaderboard.map(e => e.id)) + 1 : 1,
+      user_name: userName,
+      section_id: parseInt(sectionId, 10),
+      score: parseInt(score, 10),
+      total: parseInt(total, 10),
+      time_ms: parseInt(timeMs, 10),
+      timestamp: Date.now()
+    };
+    data.challenge_leaderboard.push(newEntry);
+    writeData(data);
+    return newEntry;
+  },
+
+  // Get challenge leaderboard for a section
+  getChallengeLeaderboard: async (sectionId) => {
+    const data = readData();
+    if (!data.challenge_leaderboard) return [];
+    
+    const secId = parseInt(sectionId, 10);
+    const entries = data.challenge_leaderboard.filter(e => e.section_id === secId);
+    
+    entries.sort((a, b) => {
+      if (b.score !== a.score) {
+        return b.score - a.score;
+      }
+      return a.time_ms - b.time_ms;
+    });
+    
+    return entries.slice(0, 10);
   }
 };
 
