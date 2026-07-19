@@ -97,6 +97,17 @@ router.post('/save-result', async (req, res) => {
   }
 });
 
+router.post('/save-challenge', async (req, res) => {
+  const { userName, sectionId, result, timeMs } = req.body;
+  try {
+    await db.saveChallengeResult(userName, sectionId, result.score, result.total, timeMs);
+    res.status(200).json({ message: 'Challenge result saved successfully' });
+  } catch (err) {
+    console.error('Error saving challenge result:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 router.post('/generate-ai', upload.single('file'), async (req, res) => {
   const { text, difficulty, userName, numQuestions } = req.body;
   const file = req.file;

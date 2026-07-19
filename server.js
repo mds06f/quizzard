@@ -52,6 +52,19 @@ app.get('/result', (req, res) => {
   res.render('result', { score, total, message, opponentName, opponentScore });
 });
 
+app.get('/leaderboard/:sectionId', async (req, res) => {
+  const { sectionId } = req.params;
+  try {
+    const db = require('./db');
+    const leaderboard = await db.getChallengeLeaderboard(sectionId);
+    const section = await db.getSectionById(sectionId);
+    res.render('leaderboard', { leaderboard, sectionName: section ? section.name : 'Unknown Topic', sectionId });
+  } catch (err) {
+    console.error(err);
+    res.status(500).send('Error loading leaderboard');
+  }
+});
+
 // Socket.io Multiplayer Lobby & Game loops
 const rooms = {};
 

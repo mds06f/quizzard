@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title><%= sectionName %> Leaderboard - Quizzard</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    body {
+      font-family: 'Outfit', sans-serif;
+    }
+  </style>
+</head>
+<body class="min-h-screen bg-stone-950 text-stone-100 flex flex-col items-center justify-center p-4 relative overflow-hidden">
+  <!-- Glowing blobs -->
+  <div class="absolute -top-40 -left-40 w-96 h-96 bg-amber-600/10 rounded-full blur-3xl -z-10"></div>
+  <div class="absolute -bottom-40 -right-40 w-96 h-96 bg-orange-600/10 rounded-full blur-3xl -z-10"></div>
+
+  <div class="max-w-2xl w-full bg-stone-900/60 border border-stone-850 p-6 sm:p-8 rounded-2xl shadow-2xl backdrop-blur-md space-y-6">
+    <!-- Header info -->
+    <div class="text-center space-y-2">
+      <span class="text-4xl">🏆</span>
+      <h1 class="text-2xl font-extrabold tracking-tight bg-gradient-to-r from-amber-400 to-orange-400 bg-clip-text text-transparent uppercase">
+        Global Leaderboard
+      </h1>
+      <p class="text-stone-400 text-sm font-medium">Topic: <span class="text-amber-300 font-semibold"><%= sectionName %></span></p>
+    </div>
+
+    <!-- Leaderboard Table -->
+    <div class="border border-stone-850 bg-stone-950/45 rounded-xl overflow-hidden">
+      <% if (leaderboard.length === 0) { %>
+        <div class="p-8 text-center text-stone-500 text-sm">
+          No records submitted for this topic yet. Be the first to claim Rank 1! ⚡
+        </div>
+      <% } else { %>
+        <table class="w-full text-left border-collapse text-xs sm:text-sm">
+          <thead>
+            <tr class="bg-stone-900 border-b border-stone-850 text-stone-400 font-semibold uppercase tracking-wider text-[10px]">
+              <th class="py-3.5 px-4 text-center">Rank</th>
+              <th class="py-3.5 px-4">Player</th>
+              <th class="py-3.5 px-4 text-center">Score</th>
+              <th class="py-3.5 px-4 text-right">Time</th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-stone-850/50">
+            <% leaderboard.forEach((entry, index) => { 
+              let medal = '';
+              let rowStyle = 'text-stone-300';
+              if (index === 0) {
+                medal = '👑 ';
+                rowStyle = 'text-amber-400 font-bold bg-amber-500/5';
+              } else if (index === 1) {
+                medal = '🥈 ';
+                rowStyle = 'text-stone-200 font-semibold';
+              } else if (index === 2) {
+                medal = '🥉 ';
+                rowStyle = 'text-amber-600 font-semibold';
+              }
+
+              // Format elapsed time in MM:SS.mmm
+              const ms = entry.time_ms;
+              const totalSec = ms / 1000;
+              const min = Math.floor(totalSec / 60);
+              const sec = Math.floor(totalSec % 60);
+              const msec = Math.floor(ms % 1000);
+              const pad = (num, size) => ('00' + num).slice(-size);
+              const formattedTime = `${pad(min, 2)}:${pad(sec, 2)}.${pad(msec, 3)}`;
+            %>
+              <tr class="<%= rowStyle %> hover:bg-stone-900/40 transition duration-150">
+                <td class="py-3.5 px-4 text-center font-bold font-mono">
+                  <%= medal %><%= index + 1 %>
+                </td>
+                <td class="py-3.5 px-4 font-medium"><%= entry.user_name %></td>
+                <td class="py-3.5 px-4 text-center font-bold"><%= entry.score %> / <%= entry.total %></td>
+                <td class="py-3.5 px-4 text-right font-mono text-[11px] text-amber-500 font-semibold">
+                  <%= formattedTime %>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      <% } %>
+    </div>
+
+    <!-- Actions -->
+    <div class="flex flex-col sm:flex-row gap-4 pt-2">
+      <a href="/" class="flex-1 text-center bg-stone-850 hover:bg-stone-800 text-stone-300 font-semibold py-3 px-4 rounded-lg border border-stone-750 active:scale-[0.99] transition text-sm">
+        🏠 Back to Home
+      </a>
+      <button onclick="window.history.back()" class="flex-1 text-center bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-semibold py-3 px-4 rounded-lg shadow active:scale-[0.99] transition text-sm">
+        🔄 Try Again
+      </button>
+    </div>
+  </div>
+</body>
+</html>
