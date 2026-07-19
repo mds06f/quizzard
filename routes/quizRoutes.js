@@ -126,6 +126,7 @@ router.post('/generate-ai', upload.single('file'), async (req, res) => {
 Generate exactly ${count} questions of "${difficulty || 'medium'}" difficulty level.
 Each question must have exactly 4 options and a 1-indexed correct_option number.
 Provide a clear, educational explanation (maximum 2 sentences) for the correct answer.
+Assign a short category name (1-3 words, e.g. "Data Types", "Looping", "Functions") representing the subtopic of each question.
 
 Here is the source text to generate the quiz from:
 ${notesText}`;
@@ -149,9 +150,10 @@ ${notesText}`;
                   option3: { type: 'STRING' },
                   option4: { type: 'STRING' },
                   correct_option: { type: 'INTEGER' },
-                  explanation: { type: 'STRING' }
+                  explanation: { type: 'STRING' },
+                  category: { type: 'STRING' }
                 },
-                required: ['question', 'option1', 'option2', 'option3', 'option4', 'correct_option', 'explanation']
+                required: ['question', 'option1', 'option2', 'option3', 'option4', 'correct_option', 'explanation', 'category']
               }
             }
           },

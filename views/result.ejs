@@ -148,6 +148,12 @@
         <p id="percentage-label" class="text-sm text-amber-400 font-semibold"></p>
       </div>
 
+      <!-- Category Breakdown Section -->
+      <div id="category-breakdown-section" class="hidden text-left bg-stone-900/40 border border-stone-850 rounded-xl p-4 sm:p-5 space-y-3">
+        <h3 class="text-xs font-bold text-stone-400 tracking-wider uppercase">Performance by Subtopic</h3>
+        <div id="category-breakdown-container" class="space-y-3"></div>
+      </div>
+
       <!-- Action Buttons -->
       <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
         <button id="btn-review"
@@ -347,24 +353,14 @@
         });
       }
 
-      // Review explanations logic
+      // Review explanations & category breakdown logic
       const btnReview = document.getElementById('btn-review');
       const reviewSection = document.getElementById('review-section');
       const reviewContainer = document.getElementById('review-container');
 
       let reviewsLoaded = false;
 
-      btnReview.addEventListener('click', async () => {
-        // Toggle view
-        reviewSection.classList.toggle('hidden');
-
-        // Scroll into view
-        if (!reviewSection.classList.contains('hidden')) {
-          reviewSection.scrollIntoView({ behavior: 'smooth' });
-        }
-
-        if (reviewsLoaded) return;
-
+      async function initCategoryBreakdownAndReview() {
         const urlParams = new URLSearchParams(window.location.search);
         const sectionId = urlParams.get('sectionId');
         const difficulty = window.localStorage.getItem('difficulty') || 'medium';
@@ -379,8 +375,52 @@
           const questions = await response.json();
           const userAnswers = JSON.parse(window.localStorage.getItem('userAnswers') || '{}');
 
-          reviewContainer.innerHTML = '';
+          // 1. Generate category breakdown
+          const categories = {};
+          questions.forEach(q => {
+            const cat = q.category || 'General Concepts';
+            if (!categories[cat]) {
+              categories[cat] = { correct: 0, total: 0 };
+            }
+            categories[cat].total += 1;
 
+            const selectedOption = parseInt(userAnswers[`question-${q.id}`], 10);
+            if (selectedOption === q.correct_option) {
+              categories[cat].correct += 1;
+            }
+          });
+
+          // Render breakdown
+          const container = document.getElementById('category-breakdown-container');
+          const sectionEl = document.getElementById('category-breakdown-section');
+          
+          if (container && sectionEl) {
+            container.innerHTML = '';
+            const catNames = Object.keys(categories);
+            if (catNames.length > 0) {
+              sectionEl.classList.remove('hidden');
+              catNames.forEach(catName => {
+                const data = categories[catName];
+                const percentage = Math.round((data.correct / data.total) * 100);
+                
+                const catCard = document.createElement('div');
+                catCard.className = "space-y-1";
+                catCard.innerHTML = `
+                  <div class="flex justify-between text-[11px] font-medium text-stone-300">
+                    <span>${catName}</span>
+                    <span>${data.correct}/${data.total} (${percentage}%)</span>
+                  </div>
+                  <div class="h-1.5 w-full bg-stone-950 rounded-full overflow-hidden border border-stone-850">
+                    <div class="h-full bg-gradient-to-r from-amber-500 to-yellow-500" style="width: ${percentage}%;"></div>
+                  </div>
+                `;
+                container.appendChild(catCard);
+              });
+            }
+          }
+
+          // 2. Prepare review container
+          reviewContainer.innerHTML = '';
           questions.forEach((q, idx) => {
             const selectedOption = parseInt(userAnswers[`question-${q.id}`], 10);
             const explanationHtml = q.explanation
@@ -413,7 +453,10 @@
             const qCard = document.createElement('div');
             qCard.className = "p-4 rounded-lg bg-stone-900/40 border border-stone-850 space-y-2";
             qCard.innerHTML = `
-              <p class="text-sm font-semibold text-stone-200">${idx + 1}. ${q.question}</p>
+              <div class="flex justify-between items-start gap-2">
+                <p class="text-sm font-semibold text-stone-200">${idx + 1}. ${q.question}</p>
+                ${q.category ? `<span class="text-[10px] bg-amber-500/10 text-amber-300 px-2 py-0.5 rounded-full border border-amber-500/20 font-bold uppercase tracking-wider font-mono">${q.category}</span>` : ''}
+              </div>
               <div class="text-xs pl-4 space-y-1">
                 ${optionStates}
               </div>
@@ -426,6 +469,16 @@
         } catch (err) {
           console.error("Error loading explanations:", err);
           reviewContainer.innerHTML = `<p class="text-xs text-red-400">Failed to load explanations.</p>`;
+        }
+      }
+
+      // Initial execution
+      initCategoryBreakdownAndReview();
+
+      btnReview.addEventListener('click', () => {
+        reviewSection.classList.toggle('hidden');
+        if (!reviewSection.classList.contains('hidden')) {
+          reviewSection.scrollIntoView({ behavior: 'smooth' });
         }
       });
 
