@@ -282,6 +282,10 @@
                 <option value="hard" class="bg-stone-950 text-stone-100">Hard</option>
               </select>
             </div>
+            <!-- AI Calibration Badge -->
+            <div id="ai-calibration-badge" class="mt-2 text-[10px] font-semibold text-amber-400 flex items-center gap-1">
+              <span>💡</span> Recommended Level: <span id="calibrated-difficulty-lbl" class="underline uppercase font-bold">Medium</span> (Calibrated)
+            </div>
           </div>
 
           <div>
@@ -849,6 +853,46 @@
       if (savedDifficulty) {
         document.getElementById('difficulty-select').value = savedDifficulty;
       }
+
+      // Auto-calibrate difficulty from history
+      function autoCalibrateDifficulty() {
+        const history = JSON.parse(localStorage.getItem('quizHistory') || '[]');
+        if (history.length === 0) {
+          const lbl = document.getElementById('calibrated-difficulty-lbl');
+          if (lbl) lbl.textContent = 'Medium (No history)';
+          return;
+        }
+
+        let totalScore = 0;
+        let totalQuestions = 0;
+        history.forEach(attempt => {
+          totalScore += attempt.score;
+          totalQuestions += attempt.total;
+        });
+
+        if (totalQuestions === 0) return;
+        const ratio = totalScore / totalQuestions;
+
+        let calibrated = 'medium';
+        if (ratio >= 0.8) {
+          calibrated = 'hard';
+        } else if (ratio < 0.5) {
+          calibrated = 'easy';
+        }
+
+        const select = document.getElementById('ai-difficulty-select');
+        const label = document.getElementById('calibrated-difficulty-lbl');
+        
+        if (select) {
+          select.value = calibrated;
+        }
+        if (label) {
+          const capitalized = calibrated.charAt(0).toUpperCase() + calibrated.slice(1);
+          label.textContent = `${capitalized} (${Math.round(ratio * 100)}% avg accuracy)`;
+        }
+      }
+
+      autoCalibrateDifficulty();
 
       loadSections();
     });

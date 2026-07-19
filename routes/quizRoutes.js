@@ -136,8 +136,15 @@ router.post('/generate-ai', upload.single('file'), async (req, res) => {
   try {
     const ai = new GoogleGenAI({ apiKey });
     
+    // Map calibration terms
+    let calibratedLevel = 'intermediate';
+    if (difficulty === 'easy') calibratedLevel = 'beginner';
+    else if (difficulty === 'hard') calibratedLevel = 'advanced';
+    else if (difficulty === 'medium') calibratedLevel = 'intermediate';
+    else if (difficulty) calibratedLevel = difficulty;
+
     const prompt = `You are a professional quiz generator. Generate a multiple choice quiz based ONLY on the provided text.
-Generate exactly ${count} questions of "${difficulty || 'medium'}" difficulty level.
+Generate exactly ${count} questions of "${calibratedLevel}" difficulty level.
 Each question must have exactly 4 options and a 1-indexed correct_option number.
 Provide a clear, educational explanation (maximum 2 sentences) for the correct answer.
 Assign a short category name (1-3 words, e.g. "Data Types", "Looping", "Functions") representing the subtopic of each question.
