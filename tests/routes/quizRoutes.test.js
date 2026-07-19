@@ -9,6 +9,7 @@ jest.mock('../../db', () => ({
   getSectionById: jest.fn(),
   getQuestions: jest.fn(),
   getQuestionsByIds: jest.fn(),
+  getAllQuestions: jest.fn(),
   saveResult: jest.fn(),
   createAIQuiz: jest.fn()
 }));
@@ -189,5 +190,24 @@ describe('Quiz Routes', () => {
 
     expect(response.status).toBe(400);
     expect(response.body.error).toContain('Gemini API key is not configured');
+  });
+
+  test('POST /api/quiz/questions-by-ids should return the filtered questions', async () => {
+    db.getAllQuestions.mockResolvedValueOnce([
+      { id: 1, question: 'Q1' },
+      { id: 2, question: 'Q2' },
+      { id: 3, question: 'Q3' }
+    ]);
+
+    const response = await request(app)
+      .post('/api/quiz/questions-by-ids')
+      .send({ ids: [1, 3] })
+      .set('Accept', 'application/json');
+
+    expect(response.status).toBe(200);
+    expect(response.body).toEqual([
+      { id: 1, question: 'Q1' },
+      { id: 3, question: 'Q3' }
+    ]);
   });
 });

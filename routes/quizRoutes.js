@@ -108,6 +108,22 @@ router.post('/save-challenge', async (req, res) => {
   }
 });
 
+router.post('/questions-by-ids', async (req, res) => {
+  const { ids } = req.body;
+  if (!ids || !Array.isArray(ids)) {
+    return res.status(400).json({ error: 'Invalid or missing questions IDs list.' });
+  }
+  try {
+    const questions = await db.getAllQuestions();
+    const idSet = new Set(ids.map(Number));
+    const filtered = questions.filter(q => idSet.has(Number(q.id)));
+    res.json(filtered);
+  } catch (err) {
+    console.error('Error fetching questions by IDs:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 router.post('/generate-ai', upload.single('file'), async (req, res) => {
   const { text, difficulty, userName, numQuestions } = req.body;
   const file = req.file;

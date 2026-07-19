@@ -425,17 +425,68 @@
       async function initCategoryBreakdownAndReview() {
         const urlParams = new URLSearchParams(window.location.search);
         const sectionId = urlParams.get('sectionId');
+        const isReview = urlParams.get('review') === 'true';
         const difficulty = window.localStorage.getItem('difficulty') || 'medium';
 
-        if (!sectionId) {
+        if (!sectionId && !isReview) {
           reviewContainer.innerHTML = `<p class="text-xs text-stone-500">Explanations are only available for this active quiz session.</p>`;
           return;
         }
 
         try {
-          const response = await fetch(`/api/quiz/questions/${sectionId}/${difficulty}`);
-          const questions = await response.json();
+          let questions = [];
+          if (isReview) {
+            const reviewIds = JSON.parse(window.localStorage.getItem('activeReviewQuestionIds') || '[]');
+            const res = await fetch('/api/quiz/questions-by-ids', {
+              method: 'POST',
+              body: JSON.stringify({ ids: reviewIds }),
+              headers: { 'Content-Type': 'application/json' }
+            });
+            questions = await res.json();
+          } else {
+            const response = await fetch(`/api/quiz/questions/${sectionId}/${difficulty}`);
+            questions = await response.json();
+          }
+
           const userAnswers = JSON.parse(window.localStorage.getItem('userAnswers') || '{}');
+
+          // Update Spaced Repetition scheduling
+          const sm2SavedKey = `sm2_updated_${window.location.search}`;
+          if (!sessionStorage.getItem(sm2SavedKey)) {
+            sessionStorage.setItem(sm2SavedKey, 'true');
+            let sm2Data = JSON.parse(localStorage.getItem('sm2Data') || '{}');
+            questions.forEach(q => {
+              const selectedOption = parseInt(userAnswers[`question-${q.id}`], 10);
+              const isCorrect = (selectedOption === q.correct_option);
+              
+              let qData = sm2Data[q.id] || { interval: 1, repetitions: 0, easeFactor: 2.5 };
+              
+              if (isCorrect) {
+                if (qData.repetitions === 0) {
+                  qData.interval = 1;
+                } else if (qData.repetitions === 1) {
+                  qData.interval = 6;
+                } else {
+                  qData.interval = Math.round(qData.interval * qData.easeFactor);
+                }
+                qData.repetitions += 1;
+                qData.easeFactor = Math.max(1.3, qData.easeFactor + (0.1 - (5 - 4) * (0.08 + (5 - 4) * 0.02)));
+              } else {
+                qData.interval = 1;
+                qData.repetitions = 0;
+                qData.easeFactor = Math.max(1.3, qData.easeFactor - 0.2);
+              }
+              
+              const today = new Date();
+              today.setHours(0,0,0,0);
+              const nextReview = new Date(today);
+              nextReview.setDate(today.getDate() + qData.interval);
+              
+              qData.dueDate = nextReview.getTime();
+              sm2Data[q.id] = qData;
+            });
+            localStorage.setItem('sm2Data', JSON.stringify(sm2Data));
+          }
 
           // 1. Generate category breakdown
           const categories = {};
