@@ -35,9 +35,23 @@ router.get('/sections/:sectionId', async (req, res) => {
 
 router.get('/questions/:sectionId/:difficulty', async (req, res) => {
   const { sectionId, difficulty } = req.params;
+  const count = parseInt(req.query.count, 10);
   try {
     const results = await db.getQuestions(sectionId, difficulty);
-    res.json(results);
+    
+    // Only shuffle and slice if it is NOT an AI section
+    const isAI = isNaN(parseInt(sectionId, 10)) || sectionId.toString().includes('ai');
+    
+    let finalResults = [...results];
+    if (!isAI && !isNaN(count) && count > 0) {
+      for (let i = finalResults.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [finalResults[i], finalResults[j]] = [finalResults[j], finalResults[i]];
+      }
+      finalResults = finalResults.slice(0, count);
+    }
+    
+    res.json(finalResults);
   } catch (err) {
     console.error('Error fetching questions:', err);
     res.status(500).json({ error: 'Database error' });

@@ -376,7 +376,8 @@
       }
 
       async function loadQuestions(sectionId, difficulty) {
-        const response = await fetch(`/api/quiz/questions/${sectionId}/${difficulty}`);
+        const count = window.localStorage.getItem('questionCount') || '5';
+        const response = await fetch(`/api/quiz/questions/${sectionId}/${difficulty}?count=${count}`);
         questionsData = await response.json();
         totalQuestions = questionsData.length;
 
