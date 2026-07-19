@@ -11,6 +11,7 @@
     }
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <script src="/socket.io/socket.io.js"></script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap"
@@ -137,6 +138,21 @@
         </button>
       </div>
     </div>
+
+    <!-- Multiplayer Scoreboard Header (Hidden by default) -->
+    <div id="multiplayer-scoreboard" class="hidden mb-6 flex justify-around items-center border border-amber-500/20 bg-amber-500/5 rounded-xl p-3 text-sm">
+      <div class="text-center">
+        <p id="p1-name" class="font-bold text-stone-300">Player 1</p>
+        <p id="p1-score" class="text-lg font-extrabold text-amber-400">0</p>
+      </div>
+      <div class="text-stone-600 font-bold text-lg">VS</div>
+      <div class="text-center">
+        <p id="p2-name" class="font-bold text-stone-300">Player 2</p>
+        <p id="p2-score" class="text-lg font-extrabold text-amber-400">0</p>
+      </div>
+    </div>
+
+    <div id="multiplayer-announcement" class="hidden mb-6 text-center text-xs font-semibold text-amber-400 bg-amber-950/20 border border-amber-500/20 rounded-lg py-2 animate-pulse"></div>
 
     <!-- Main quiz card -->
     <div class="glass-card rounded-2xl shadow-2xl p-6 sm:p-8">
@@ -570,7 +586,196 @@
 
         document.getElementById('user-name-display').textContent = userName;
         loadSectionName(sectionId);
-        loadQuestions(sectionId, difficulty);
+
+        const isMultiplayer = window.localStorage.getItem('multiplayer') === 'true';
+        if (isMultiplayer) {
+          const socket = io();
+          document.getElementById('multiplayer-scoreboard').classList.remove('hidden');
+          
+          socket.emit('quizReady', { roomCode: window.localStorage.getItem('roomCode') });
+
+          socket.on('loadQuestion', ({ questionIndex, totalQuestions, question }) => {
+            // Build the question card dynamically
+            const quizContainer = document.getElementById('quiz-container');
+            quizContainer.innerHTML = '';
+            
+            const questionElem = document.createElement('div');
+            questionElem.className = 'p-6 border border-stone-800 rounded-xl bg-stone-900/30 space-y-4';
+            questionElem.setAttribute('data-question-index', questionIndex);
+            
+            const optionsList = [
+              { text: question.option1, val: 1 },
+              { text: question.option2, val: 2 },
+              { text: question.option3, val: 3 },
+              { text: question.option4, val: 4 }
+            ];
+            
+            for (let i = optionsList.length - 1; i > 0; i--) {
+              const j = Math.floor(Math.random() * (i + 1));
+              [optionsList[i], optionsList[j]] = [optionsList[j], optionsList[i]];
+            }
+            
+            questionElem.innerHTML = `
+              <div class="flex items-start justify-between gap-3">
+                <div class="flex items-start gap-3">
+                  <span class="bg-amber-500/20 text-amber-300 font-bold text-xs rounded-full px-2.5 py-1 mt-0.5">${questionIndex + 1}</span>
+                  <p class="text-lg font-medium text-stone-100">${question.question}</p>
+                </div>
+                <button type="button" class="bookmark-btn text-xl text-amber-400 hover:scale-110 active:scale-95 transition focus:outline-none flex-shrink-0" data-question-id="${question.id}">
+                  ☆
+                </button>
+              </div>
+              <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 ml-8">
+                ${optionsList.map((opt, optIdx) => `
+                  <label class="option-card relative cursor-pointer block">
+                    <input type="radio" name="question-${question.id}" value="${opt.val}" class="sr-only">
+                    <div class="option-label p-3.5 border border-stone-800 bg-stone-950/45 hover:border-stone-700 rounded-lg text-sm text-stone-400 hover:text-stone-200 transition duration-200 flex items-center">
+                      <span class="inline-block bg-stone-850 text-stone-500 text-[10px] font-mono px-1.5 py-0.5 rounded mr-2.5 border border-stone-800 font-bold flex-shrink-0">${optIdx + 1}</span>
+                      <span>${opt.text}</span>
+                    </div>
+                  </label>
+                `).join('')}
+              </div>
+            `;
+            quizContainer.appendChild(questionElem);
+            
+            // Star toggle
+            questionElem.querySelector('.bookmark-btn').addEventListener('click', (e) => {
+              e.stopPropagation();
+              let bookmarks = JSON.parse(localStorage.getItem('bookmarkedQuestions') || '[]');
+              const idx = bookmarks.findIndex(b => b.id === question.id);
+              if (idx > -1) {
+                bookmarks.splice(idx, 1);
+              } else {
+                bookmarks.push(question);
+              }
+              localStorage.setItem('bookmarkedQuestions', JSON.stringify(bookmarks));
+              const isBookmarked = bookmarks.some(b => b.id === question.id);
+              e.currentTarget.innerHTML = isBookmarked ? '★' : '☆';
+            });
+
+            // Star state initial sync
+            const bookmarks = JSON.parse(localStorage.getItem('bookmarkedQuestions') || '[]');
+            if (bookmarks.some(b => b.id === question.id)) {
+              questionElem.querySelector('.bookmark-btn').innerHTML = '★';
+            }
+
+            // Radio events
+            questionElem.querySelectorAll('input[type="radio"]').forEach(radio => {
+              radio.addEventListener('change', (e) => {
+                if (localStorage.getItem('soundEnabled') !== 'false') {
+                  playClickSound();
+                }
+                const val = e.target.value;
+                socket.emit('submitAnswer', { roomCode: window.localStorage.getItem('roomCode'), answerVal: val });
+                
+                const label = radio.closest('.option-card').querySelector('.option-label');
+                label.innerHTML += ` <span class="text-[10px] text-amber-500 italic ml-2">Locked</span>`;
+                questionElem.querySelectorAll('input[type="radio"]').forEach(r => r.disabled = true);
+              });
+            });
+
+            document.getElementById('question-counter').textContent = `Question ${questionIndex + 1} of ${totalQuestions}`;
+            document.getElementById('quiz-loading').classList.add('hidden');
+            document.getElementById('quiz-form').classList.remove('hidden');
+            document.getElementById('quiz-actions').classList.add('hidden');
+
+            clearInterval(timerInterval);
+            timeLeft = TIME_LIMIT;
+            updateTimerUI();
+            timerInterval = setInterval(() => {
+              timeLeft -= 0.1;
+              if (timeLeft <= 0) {
+                timeLeft = 0;
+                clearInterval(timerInterval);
+              }
+              updateTimerUI();
+            }, 100);
+
+            document.getElementById('multiplayer-announcement').classList.add('hidden');
+          });
+
+          socket.on('revealAnswer', ({ correctOption, explanation }) => {
+            clearInterval(timerInterval);
+            const questionElem = document.querySelector(`#quiz-container > div`);
+            if (!questionElem) return;
+
+            const optionCards = questionElem.querySelectorAll('.option-card');
+            const radioChecked = questionElem.querySelector('input[type="radio"]:checked');
+            const selectedOptionValue = radioChecked ? parseInt(radioChecked.value, 10) : null;
+            
+            optionCards.forEach((card) => {
+              const radio = card.querySelector('input[type="radio"]');
+              if (!radio) return;
+              radio.disabled = true;
+              const optVal = parseInt(radio.value, 10);
+              const labelDiv = card.querySelector('.option-label');
+              labelDiv.classList.remove('hover:border-stone-700', 'hover:text-stone-200');
+              
+              if (optVal === correctOption) {
+                labelDiv.className = 'option-label p-3.5 border bg-emerald-950/40 border-emerald-500/60 text-emerald-300 shadow-sm shadow-emerald-500/10 rounded-lg text-sm flex items-center';
+                const checkIcon = document.createElement('span');
+                checkIcon.className = 'ml-2 text-emerald-400 font-bold';
+                checkIcon.textContent = '✅';
+                labelDiv.appendChild(checkIcon);
+              } else if (selectedOptionValue !== null && selectedOptionValue === optVal) {
+                labelDiv.className = 'option-label p-3.5 border bg-red-950/40 border-red-500/60 text-red-300 shadow-sm shadow-red-500/10 rounded-lg text-sm flex items-center';
+                const crossIcon = document.createElement('span');
+                crossIcon.className = 'ml-2 text-red-400 font-bold';
+                crossIcon.textContent = '❌';
+                labelDiv.appendChild(crossIcon);
+              }
+            });
+
+            if (explanation) {
+              const explanationDiv = document.createElement('div');
+              explanationDiv.className = 'mt-4 p-4 bg-amber-950/20 border-l-2 border-amber-500/50 rounded-lg text-sm text-amber-200 animate-fade-in';
+              explanationDiv.innerHTML = `<strong>Explanation:</strong> ${explanation}`;
+              questionElem.appendChild(explanationDiv);
+            }
+          });
+
+          socket.on('scoreboardUpdate', ({ players }) => {
+            if (players.length >= 2) {
+              document.getElementById('p1-name').textContent = players[0].name;
+              document.getElementById('p1-score').textContent = players[0].score;
+              document.getElementById('p2-name').textContent = players[1].name;
+              document.getElementById('p2-score').textContent = players[1].score;
+            }
+          });
+
+          socket.on('firstCorrect', ({ winnerName }) => {
+            const banner = document.getElementById('multiplayer-announcement');
+            banner.textContent = `🎯 ${winnerName} got it correct first! (+1 point)`;
+            banner.classList.remove('hidden');
+          });
+
+          socket.on('playerSubmitted', ({ name }) => {
+            const banner = document.getElementById('multiplayer-announcement');
+            banner.textContent = `⏳ ${name} locked in their answer. Waiting for you...`;
+            banner.classList.remove('hidden');
+          });
+
+          socket.on('quizEnded', ({ players }) => {
+            const myName = window.localStorage.getItem('userName');
+            const me = players.find(p => p.name === myName);
+            const opponent = players.find(p => p.name !== myName);
+            const score = me ? me.score : 0;
+            const total = totalQuestions || 5;
+            
+            const opponentDetails = opponent ? `&opponentName=${opponent.name}&opponentScore=${opponent.score}` : '';
+            window.localStorage.removeItem('multiplayer');
+            window.location.href = `/result?score=${score}&total=${total}&sectionId=${window.localStorage.getItem('sectionId')}${opponentDetails}`;
+          });
+
+          socket.on('playerDisconnected', (msg) => {
+            alert(msg);
+            window.location.href = '/';
+          });
+
+        } else {
+          loadQuestions(sectionId, difficulty);
+        }
       });
     </script>
 </body>
