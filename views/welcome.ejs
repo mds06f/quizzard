@@ -10,6 +10,8 @@
     }
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#0c0a09">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -135,6 +137,25 @@
         <div class="neon-border flex rounded-lg border border-stone-800 bg-stone-950/45 transition duration-300">
           <span class="inline-flex items-center px-3 text-stone-600 text-lg">👤</span>
           <input type="text" id="user-name" class="block w-full p-3 bg-transparent text-stone-100 placeholder-stone-600 focus:outline-none text-base" placeholder="What should we call you?" required>
+        </div>
+      </div>
+
+      <!-- PWA Install Banner (Hidden by default) -->
+      <div id="pwa-install-banner" class="hidden mb-6 p-4 bg-amber-500/10 border border-amber-500/25 rounded-2xl flex flex-col sm:flex-row justify-between items-center gap-4 shadow-lg shadow-amber-500/5">
+        <div class="flex items-center gap-3">
+          <span class="text-2xl">📲</span>
+          <div class="text-left">
+            <h3 class="text-sm font-bold text-white">Install Quizzard App</h3>
+            <p class="text-[10px] text-stone-400">Access your study buddy offline anytime from your home screen</p>
+          </div>
+        </div>
+        <div class="flex gap-2 w-full sm:w-auto">
+          <button id="btn-pwa-dismiss" type="button" class="flex-1 sm:flex-none bg-stone-850 hover:bg-stone-800 text-stone-300 px-3 py-1.5 rounded-lg text-xs font-semibold border border-stone-750 transition">
+            Dismiss
+          </button>
+          <button id="btn-pwa-install" type="button" class="flex-1 sm:flex-none bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white px-4 py-1.5 rounded-lg text-xs font-bold shadow transition">
+            Install
+          </button>
         </div>
       </div>
 
@@ -825,6 +846,52 @@
         }
       });
     }
+
+    // Service Worker Registration and PWA Install prompt
+    let deferredPrompt;
+    
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((reg) => console.log('Service Worker registered successfully:', reg.scope))
+          .catch((err) => console.error('Service Worker registration failed:', err));
+      });
+    }
+
+    window.addEventListener('beforeinstallprompt', (e) => {
+      e.preventDefault();
+      deferredPrompt = e;
+      const installBanner = document.getElementById('pwa-install-banner');
+      if (installBanner) {
+        installBanner.classList.remove('hidden');
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', () => {
+      const btnPwaInstall = document.getElementById('btn-pwa-install');
+      const btnPwaDismiss = document.getElementById('btn-pwa-dismiss');
+      const installBanner = document.getElementById('pwa-install-banner');
+
+      if (btnPwaInstall && btnPwaDismiss && installBanner) {
+        btnPwaInstall.addEventListener('click', () => {
+          if (!deferredPrompt) return;
+          deferredPrompt.prompt();
+          deferredPrompt.userChoice.then((choiceResult) => {
+            if (choiceResult.outcome === 'accepted') {
+              console.log('User accepted the install prompt');
+            } else {
+              console.log('User dismissed the install prompt');
+            }
+            deferredPrompt = null;
+            installBanner.classList.add('hidden');
+          });
+        });
+
+        btnPwaDismiss.addEventListener('click', () => {
+          installBanner.classList.add('hidden');
+        });
+      }
+    });
 
     // Init
     document.addEventListener('DOMContentLoaded', () => {
