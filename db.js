@@ -186,7 +186,8 @@ const db = {
         option4: q.option4,
         correct_option: parseInt(q.correct_option, 10),
         difficulty: q.difficulty || 'medium',
-        explanation: q.explanation || ''
+        explanation: q.explanation || '',
+        category: q.category || ''
       });
     });
 

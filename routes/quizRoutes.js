@@ -35,9 +35,23 @@ router.get('/sections/:sectionId', async (req, res) => {
 
 router.get('/questions/:sectionId/:difficulty', async (req, res) => {
   const { sectionId, difficulty } = req.params;
+  const count = parseInt(req.query.count, 10);
   try {
     const results = await db.getQuestions(sectionId, difficulty);
-    res.json(results);
+    
+    // Only shuffle and slice if it is NOT an AI section
+    const isAI = isNaN(parseInt(sectionId, 10)) || sectionId.toString().includes('ai');
+    
+    let finalResults = [...results];
+    if (!isAI && !isNaN(count) && count > 0) {
+      for (let i = finalResults.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [finalResults[i], finalResults[j]] = [finalResults[j], finalResults[i]];
+      }
+      finalResults = finalResults.slice(0, count);
+    }
+    
+    res.json(finalResults);
   } catch (err) {
     console.error('Error fetching questions:', err);
     res.status(500).json({ error: 'Database error' });
@@ -126,6 +140,7 @@ router.post('/generate-ai', upload.single('file'), async (req, res) => {
 Generate exactly ${count} questions of "${difficulty || 'medium'}" difficulty level.
 Each question must have exactly 4 options and a 1-indexed correct_option number.
 Provide a clear, educational explanation (maximum 2 sentences) for the correct answer.
+Assign a short category name (1-3 words, e.g. "Data Types", "Looping", "Functions") representing the subtopic of each question.
 
 Here is the source text to generate the quiz from:
 ${notesText}`;
@@ -149,9 +164,10 @@ ${notesText}`;
                   option3: { type: 'STRING' },
                   option4: { type: 'STRING' },
                   correct_option: { type: 'INTEGER' },
-                  explanation: { type: 'STRING' }
+                  explanation: { type: 'STRING' },
+                  category: { type: 'STRING' }
                 },
-                required: ['question', 'option1', 'option2', 'option3', 'option4', 'correct_option', 'explanation']
+                required: ['question', 'option1', 'option2', 'option3', 'option4', 'correct_option', 'explanation', 'category']
               }
             }
           },

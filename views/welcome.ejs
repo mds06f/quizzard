@@ -217,6 +217,19 @@
           </div>
         </div>
 
+        <div>
+          <label for="num-questions-select" class="block text-sm font-semibold text-stone-300 mb-2 tracking-wide">NUMBER OF QUESTIONS</label>
+          <div class="neon-border flex rounded-lg border border-stone-800 bg-stone-950/45 transition duration-300">
+            <span class="inline-flex items-center px-3 text-stone-600 text-lg">📋</span>
+            <select id="num-questions-select" class="block w-full p-3 bg-transparent text-stone-300 focus:outline-none text-base cursor-pointer" required>
+              <option value="5" selected class="bg-stone-950 text-stone-100">5 Questions</option>
+              <option value="10" class="bg-stone-950 text-stone-100">10 Questions</option>
+              <option value="15" class="bg-stone-950 text-stone-100">15 Questions</option>
+              <option value="20" class="bg-stone-950 text-stone-100">20 Questions</option>
+            </select>
+          </div>
+        </div>
+
         <button type="submit" id="btn-start-quiz" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold p-4 rounded-lg shadow-lg hover:from-amber-500 hover:to-orange-500 hover:shadow-amber-500/10 active:scale-[0.99] transition duration-300 flex items-center justify-center gap-2 group">
           Start Quiz <span class="group-hover:translate-x-1 transition-transform">➡️</span>
         </button>
@@ -471,12 +484,14 @@
       const userName = userNameInput.value.trim();
       const sectionId = document.getElementById('section-select').value;
       const difficulty = document.getElementById('difficulty-select').value;
+      const count = document.getElementById('num-questions-select').value;
 
       if (!userName) return;
 
       window.localStorage.setItem('userName', userName);
       window.localStorage.setItem('sectionId', sectionId);
       window.localStorage.setItem('difficulty', difficulty);
+      window.localStorage.setItem('questionCount', count);
       window.location.href = '/quiz';
     });
 
