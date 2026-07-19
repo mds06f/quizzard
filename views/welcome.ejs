@@ -176,6 +176,47 @@
           </div>
         </div>
 
+        <!-- Mode Selection -->
+        <div>
+          <label class="block text-sm font-semibold text-stone-300 mb-2 tracking-wide">PLAY MODE</label>
+          <div class="grid grid-cols-2 gap-3">
+            <button type="button" id="mode-single" class="tab-active p-3 border border-stone-800 bg-stone-950/40 rounded-lg text-sm text-stone-300 hover:text-stone-200 transition font-medium flex items-center justify-center gap-2">
+              <span>👤</span> Single Player
+            </button>
+            <button type="button" id="mode-multiplayer" class="p-3 border border-stone-800 bg-stone-950/40 rounded-lg text-sm text-stone-400 hover:text-stone-200 transition font-medium flex items-center justify-center gap-2">
+              <span>👥</span> Multiplayer
+            </button>
+          </div>
+        </div>
+
+        <!-- Multiplayer Lobby Panel (Hidden initially) -->
+        <div id="multiplayer-lobby" class="hidden border border-stone-800 bg-stone-950/20 rounded-xl p-4 space-y-4">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="space-y-2 text-center sm:text-left border-b sm:border-b-0 sm:border-r border-stone-800 pb-4 sm:pb-0 sm:pr-4">
+              <p class="text-[10px] font-semibold text-stone-400 tracking-wider">HOST A GAME</p>
+              <button type="button" id="btn-host-room" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold py-2.5 px-4 rounded-lg shadow hover:from-amber-500 hover:to-orange-500 transition text-sm flex items-center justify-center gap-1">
+                Create Room
+              </button>
+              <div id="host-code-display" class="hidden space-y-2 mt-2">
+                <p class="text-[10px] text-stone-500">Share this code with your friend:</p>
+                <div id="room-code-val" class="bg-stone-900 border border-stone-800 text-amber-300 font-mono font-bold text-xl py-2 px-4 rounded tracking-widest text-center select-all select-none">
+                  ------
+                </div>
+                <p class="text-[10px] text-stone-500 animate-pulse">Waiting for opponent to join...</p>
+              </div>
+            </div>
+            <div class="space-y-2">
+              <p class="text-[10px] font-semibold text-stone-400 tracking-wider">JOIN A GAME</p>
+              <div class="flex gap-2">
+                <input type="text" id="join-code-input" class="w-full p-2.5 border border-stone-800 bg-stone-950/45 text-stone-100 placeholder-stone-600 rounded-lg text-sm text-center font-mono tracking-widest uppercase focus:outline-none" placeholder="ENTER CODE" maxlength="6">
+                <button type="button" id="btn-join-room" class="bg-stone-800 border border-stone-750 text-stone-300 hover:text-white font-semibold py-2.5 px-4 rounded-lg transition text-sm flex items-center justify-center gap-1 flex-shrink-0">
+                  Join
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <div>
           <label for="num-questions-select" class="block text-sm font-semibold text-stone-300 mb-2 tracking-wide">NUMBER OF QUESTIONS</label>
           <div class="neon-border flex rounded-lg border border-stone-800 bg-stone-950/45 transition duration-300">
@@ -189,7 +230,7 @@
           </div>
         </div>
 
-        <button type="submit" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold p-4 rounded-lg shadow-lg hover:from-amber-500 hover:to-orange-500 hover:shadow-amber-500/10 active:scale-[0.99] transition duration-300 flex items-center justify-center gap-2 group">
+        <button type="submit" id="btn-start-quiz" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold p-4 rounded-lg shadow-lg hover:from-amber-500 hover:to-orange-500 hover:shadow-amber-500/10 active:scale-[0.99] transition duration-300 flex items-center justify-center gap-2 group">
           Start Quiz <span class="group-hover:translate-x-1 transition-transform">➡️</span>
         </button>
       </form>
@@ -624,6 +665,113 @@
         }
       }
     });
+
+    // Socket initialization
+    let socket;
+    function initSocket() {
+      if (socket) return socket;
+      socket = io();
+      
+      socket.on('roomCreated', ({ roomCode }) => {
+        document.getElementById('room-code-val').textContent = roomCode;
+        document.getElementById('host-code-display').classList.remove('hidden');
+        document.getElementById('btn-host-room').disabled = true;
+        document.getElementById('btn-host-room').textContent = 'Room Created';
+      });
+
+      socket.on('roomReady', ({ roomCode, sectionId, difficulty, count }) => {
+        window.localStorage.setItem('roomCode', roomCode);
+        window.localStorage.setItem('sectionId', sectionId);
+        window.localStorage.setItem('difficulty', difficulty);
+        window.localStorage.setItem('questionCount', count);
+        window.localStorage.setItem('multiplayer', 'true');
+        
+        const userName = userNameInput.value.trim();
+        window.localStorage.setItem('userName', userName);
+        
+        window.location.href = '/quiz';
+      });
+
+      socket.on('errorMessage', (msg) => {
+        alert(msg);
+      });
+
+      return socket;
+    }
+
+    // Play Mode toggles
+    const modeSingleBtn = document.getElementById('mode-single');
+    const modeMultiplayerBtn = document.getElementById('mode-multiplayer');
+    const multiplayerLobby = document.getElementById('multiplayer-lobby');
+    const btnStartQuiz = document.getElementById('btn-start-quiz');
+
+    if (modeSingleBtn && modeMultiplayerBtn && multiplayerLobby && btnStartQuiz) {
+      modeSingleBtn.addEventListener('click', () => {
+        modeSingleBtn.classList.add('tab-active', 'text-stone-300');
+        modeSingleBtn.classList.remove('text-stone-400');
+        modeMultiplayerBtn.classList.remove('tab-active', 'text-stone-300');
+        modeMultiplayerBtn.classList.add('text-stone-400');
+        multiplayerLobby.classList.add('hidden');
+        btnStartQuiz.classList.remove('hidden');
+      });
+
+      modeMultiplayerBtn.addEventListener('click', () => {
+        modeMultiplayerBtn.classList.add('tab-active', 'text-stone-300');
+        modeMultiplayerBtn.classList.remove('text-stone-400');
+        modeSingleBtn.classList.remove('tab-active', 'text-stone-300');
+        modeSingleBtn.classList.add('text-stone-400');
+        multiplayerLobby.classList.remove('hidden');
+        btnStartQuiz.classList.add('hidden');
+      });
+    }
+
+    // Host room action
+    const btnHostRoom = document.getElementById('btn-host-room');
+    if (btnHostRoom) {
+      btnHostRoom.addEventListener('click', () => {
+        const userName = userNameInput.value.trim();
+        if (!userName) {
+          userNameInput.focus();
+          userNameInput.reportValidity();
+          return;
+        }
+
+        const sectionId = document.getElementById('section-select').value;
+        const difficulty = document.getElementById('difficulty-select').value;
+        const count = window.localStorage.getItem('questionCount') || '5';
+
+        if (!sectionId || !difficulty) {
+          alert('Please select a topic and difficulty first.');
+          return;
+        }
+
+        const s = initSocket();
+        s.emit('createRoom', { userName, sectionId, difficulty, count });
+      });
+    }
+
+    // Join room action
+    const btnJoinRoom = document.getElementById('btn-join-room');
+    const joinCodeInput = document.getElementById('join-code-input');
+    if (btnJoinRoom && joinCodeInput) {
+      btnJoinRoom.addEventListener('click', () => {
+        const userName = userNameInput.value.trim();
+        if (!userName) {
+          userNameInput.focus();
+          userNameInput.reportValidity();
+          return;
+        }
+
+        const roomCode = joinCodeInput.value.trim();
+        if (roomCode.length !== 6 || isNaN(parseInt(roomCode, 10))) {
+          alert('Please enter a valid 6-digit room code.');
+          return;
+        }
+
+        const s = initSocket();
+        s.emit('joinRoom', { roomCode, userName });
+      });
+    }
 
     function initThemeToggle() {
       const toggleBtn = document.createElement('button');
