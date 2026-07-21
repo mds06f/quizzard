@@ -20,6 +20,36 @@ We have categorized them by difficulty to help you find the perfect task to star
 * **Component**: `db.js` (inside the `defaultData` object)
 * **Goal**: Add a new section in the `sections` array and 5-10 related questions in the `questions` array. Make sure they include correct options and explanations.
 
+### 20. Option Selection Vibration & Sound Toggle
+* **Description**: Add settings controls to let mobile/desktop users toggle audio effects on/off and enable tactile haptic feedback.
+* **Component**: `views/welcome.ejs`, `views/index.ejs`
+* **Goal**:
+  - Add simple settings checkbox panel to the Welcome screen.
+  - Implement a toggle saving configuration to `localStorage`.
+  - Trigger `navigator.vibrate([30])` when users tap option cards (if supported).
+
+### 21. Visual Progress Bar Indicator
+* **Description**: Build a smooth horizontal progress bar at the top of the quiz page indicating advancement.
+* **Component**: `views/index.ejs`
+* **Goal**:
+  - Insert a progress tracker div container.
+  - Update layout width dynamically from `0%` to `100%` based on answered progress.
+
+### 22. Clear Explanations Review Cache
+* **Description**: Add controls on the quiz results screen to clear userAnswers caches so users can start fresh attempts.
+* **Component**: `views/result.ejs`
+* **Goal**: Place a "Reset Quiz Progress" action button next to review selections that clears `localStorage` response data.
+
+### 23. Preset Categories Search & Filters
+* **Description**: Allow searching/filtering of preset categories when standard topics lists scale up.
+* **Component**: `views/welcome.ejs`
+* **Goal**: Add a text search input above the standard select list to filter drop-down option displays dynamically.
+
+### 24. HUD Session Correct-Streak Tracker
+* **Description**: Add an in-quiz score HUD tracking consecutive correct answers in the current session.
+* **Component**: `views/index.ejs`
+* **Goal**: Display a fire/streak HUD icon. Increment on correct options selection, and reset back to 0 on incorrect choice.
+
 ---
 
 ## 🟡 Medium (Intermediate Tasks)
@@ -86,6 +116,36 @@ We have categorized them by difficulty to help you find the perfect task to star
   - Add a pill-selector or slider to the quiz setup panel.
   - Pass the selected count to the backend and slice/randomise the question pool accordingly.
 
+### 25. Dynamic Timer Limit based on Difficulty
+* **Description**: Adjust the question countdown timer threshold dynamically depending on selected difficulty (e.g., Easy = 30s, Medium = 20s, Hard = 12s).
+* **Component**: `views/welcome.ejs`, `views/index.ejs`
+* **Goal**: Bind dynamic seconds variables based on the active session's difficulty and trigger corresponding interval durations.
+
+### 26. Study Progress Export & Backup
+* **Description**: Give users ability to download historical quiz records and spaced repetition intervals data.
+* **Component**: `views/welcome.ejs`
+* **Goal**: Add an "Export Study History" button that serializes local storage states into downloadable JSON logs.
+
+### 27. Topic Details Tooltips on Welcome Select
+* **Description**: Show previews of average scores, completion status, and question counts below target category selectors.
+* **Component**: `views/welcome.ejs`
+* **Goal**: Update layouts on change event list hooks to show description details fetched dynamically from sections meta.
+
+### 28. Automated System Dark/Light Mode Auto-Detection
+* **Description**: Detect system preferences to pre-select default light/dark themes.
+* **Component**: `views/welcome.ejs`, `views/index.ejs`, `views/result.ejs`
+* **Goal**: Query `window.matchMedia('(prefers-color-scheme: light)')` and toggle theme class configurations if no explicit config resides in localStorage.
+
+### 29. Section Classification Tags
+* **Description**: Tag preset topics with category labels (e.g., Programming, Humanities, Science) and support topic filtering by tag.
+* **Component**: `views/welcome.ejs`, `db.js`
+* **Goal**: Update database scheme. Render visual classification tags and support filtering by select tab elements on the dashboard.
+
+### 30. Audio Click Tone Waveform Selectors
+* **Description**: Let users select sound waveforms (Retro Arcade, Minimalist Tone) in setting dropdowns.
+* **Component**: `views/welcome.ejs`, `views/index.ejs`
+* **Goal**: Integrate Web Audio oscillator wave types to play custom pitch sets depending on user selection.
+
 ---
 
 ## 🔴 Hard (Advanced Features)
@@ -151,6 +211,36 @@ We have categorized them by difficulty to help you find the perfect task to star
   - Track per-question attempt history (correct/incorrect + timestamp) in `localStorage`.
   - Implement a basic SM-2 spaced repetition algorithm to schedule reviews.
   - Add a "Review Due" tab on the welcome page showing the count of questions due for review today.
+
+### 31. Spaced Repetition Mastery Board
+* **Description**: Build a detailed dashboard visualizing scheduled spacing logs, next review dates, and mastery scores for each question.
+* **Component**: `views/welcome.ejs`
+* **Goal**: Create a dashboard listing card items showing E-factor values, repetitions counters, and a retention breakdown visual grid.
+
+### 32. Bulk CSV Questions Import/Export
+* **Description**: Let admin managers import or export questions in bulk using standard CSV format.
+* **Component**: `routes/adminRoutes.js`, `views/admin/dashboard.ejs`
+* **Goal**: Add file reader zones on admin forms. Parse CSV uploads on the server, validate, save entries to `db.json`, and provide CSV download tools.
+
+### 33. Live Multiplayer Cooperative Study Room
+* **Description**: Support cooperative study modes where up to 4 users answer questions together as a group.
+* **Component**: `server.js`, `views/index.ejs`, Socket.io events
+* **Goal**: Synchronize live questions and answers amongst users, and display a aggregate progress scorecard comparing teams accuracy.
+
+### 34. Cloud Account Data Sync
+* **Description**: Allow users to sync study statistics, achievements, and spaced repetition state parameters.
+* **Component**: `views/welcome.ejs`, new endpoint `/api/user/sync`
+* **Goal**: Develop key backup tokens that upload/download serialized statistics arrays to allow study synchronization across multiple devices.
+
+### 35. LLM-Driven Adaptive Learning Remediation
+* **Description**: Automatically trigger background Gemini generation to generate explainer slides/questions if user struggles with a subtopic tag.
+* **Component**: `routes/quizRoutes.js`, `views/index.ejs`
+* **Goal**: Track tag accuracy. If accuracy falls below 50%, call Gemini API to insert a custom remediation question with detail context.
+
+### 36. Voice Commands Speech-to-Text Mode
+* **Description**: Support hands-free option selections and quiz navigation using native voice input commands.
+* **Component**: `views/index.ejs`
+* **Goal**: Integrate the Web Speech API to listen to voice selections and automatically submit cards.
 
 ---
 
