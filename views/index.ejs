@@ -238,7 +238,7 @@
         oscillator.connect(gainNode);
         gainNode.connect(audioCtx.destination);
 
-        oscillator.type = 'sine';
+        oscillator.type = localStorage.getItem('soundWaveform') || 'sine';
         oscillator.frequency.value = 700;
 
         gainNode.gain.value = 0.05;
