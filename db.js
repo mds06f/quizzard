@@ -5,9 +5,9 @@ const DB_FILE = path.join(__dirname, 'db.json');
 
 const defaultData = {
   sections: [
-    { id: 1, name: 'General Knowledge' },
-    { id: 2, name: 'Science' },
-    { id: 3, name: 'Python Basics' }
+    { id: 1, name: 'General Knowledge', tags: ['General', 'Trivia'] },
+    { id: 2, name: 'Science', tags: ['Science', 'Biology'] },
+    { id: 3, name: 'Python Basics', tags: ['Programming', 'Python'] }
   ],
   questions: [
     { id: 1, section_id: 1, question: 'What is the capital of France?', option1: 'London', option2: 'Berlin', option3: 'Paris', option4: 'Rome', correct_option: 3, difficulty: 'easy' },

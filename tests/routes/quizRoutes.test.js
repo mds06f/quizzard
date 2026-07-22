@@ -60,12 +60,17 @@ describe('Quiz Routes', () => {
       { id: 1, name: 'Math' },
       { id: 2, name: 'Science' }
     ]);
+    db.getAllQuestions.mockResolvedValueOnce([
+      { id: 101, section_id: 1, difficulty: 'easy' },
+      { id: 102, section_id: 1, difficulty: 'easy' },
+      { id: 103, section_id: 2, difficulty: 'hard' }
+    ]);
 
     const response = await request(app).get('/api/quiz/sections');
     expect(response.status).toBe(200);
     expect(response.body).toEqual([
-      { id: 1, name: 'Math' },
-      { id: 2, name: 'Science' }
+      { id: 1, name: 'Math', questionCount: 2, difficulty: 'Easy' },
+      { id: 2, name: 'Science', questionCount: 1, difficulty: 'Hard' }
     ]);
   });
 

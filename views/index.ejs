@@ -6,7 +6,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quiz Session - Quizzard</title>
   <script>
-    if (localStorage.getItem('theme') === 'light') {
+    const savedTheme = localStorage.getItem('theme');
+    if (savedTheme === 'light' || (!savedTheme && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches)) {
       document.documentElement.classList.add('theme-light');
     }
   </script>
@@ -237,7 +238,7 @@
         oscillator.connect(gainNode);
         gainNode.connect(audioCtx.destination);
 
-        oscillator.type = 'sine';
+        oscillator.type = localStorage.getItem('soundWaveform') || 'sine';
         oscillator.frequency.value = 700;
 
         gainNode.gain.value = 0.05;
@@ -245,13 +246,20 @@
         oscillator.start();
         oscillator.stop(audioCtx.currentTime + 0.08);
       }
-
       function triggerHapticFeedback() {
         if (localStorage.getItem('vibrationEnabled') !== 'false' && navigator.vibrate) {
           navigator.vibrate(30);
         }
       }
-      const TIME_LIMIT = 20;
+      let TIME_LIMIT = 20;
+      const activeDifficultySetting = window.localStorage.getItem('difficulty') || 'medium';
+      if (activeDifficultySetting === 'easy') {
+        TIME_LIMIT = 30;
+      } else if (activeDifficultySetting === 'hard') {
+        TIME_LIMIT = 12;
+      } else {
+        TIME_LIMIT = 20;
+      }
       let timerInterval = null;
       let timeLeft = TIME_LIMIT;
       let currentSessionStreak = 0;

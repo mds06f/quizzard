@@ -12,7 +12,28 @@ const upload = multer({
 router.get('/sections', async (req, res) => {
   try {
     const results = await db.getSections();
-    res.json(results);
+    const allQuestions = (await db.getAllQuestions()) || [];
+    
+    const enhanced = results.map(section => {
+      const sectionQuestions = allQuestions.filter(q => q.section_id === section.id);
+      const diffs = sectionQuestions.map(q => q.difficulty);
+      let dominantDiff = 'Mixed';
+      
+      if (diffs.length > 0) {
+        const counts = {};
+        diffs.forEach(d => counts[d] = (counts[d] || 0) + 1);
+        dominantDiff = Object.keys(counts).reduce((a, b) => counts[a] > counts[b] ? a : b);
+        dominantDiff = dominantDiff.charAt(0).toUpperCase() + dominantDiff.slice(1);
+      }
+      
+      return {
+        ...section,
+        questionCount: sectionQuestions.length,
+        difficulty: dominantDiff
+      };
+    });
+    
+    res.json(enhanced);
   } catch (err) {
     console.error('Error fetching sections:', err);
     res.status(500).json({ error: 'Database error' });
