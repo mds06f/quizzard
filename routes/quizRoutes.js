@@ -254,4 +254,40 @@ ${notesText}`;
   }
 });
 
+// POST generate data sync token
+router.post('/user/sync/token', async (req, res) => {
+  const { payload } = req.body;
+  if (!payload) {
+    return res.status(400).json({ error: 'Sync payload is required.' });
+  }
+  
+  try {
+    const token = 'SYNC-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    await db.saveSyncToken(token, payload);
+    res.status(200).json({ token });
+  } catch (err) {
+    console.error('Error generating sync token:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+// GET restore data from sync token
+router.get('/user/sync/restore/:token', async (req, res) => {
+  const { token } = req.params;
+  if (!token) {
+    return res.status(400).json({ error: 'Token is required.' });
+  }
+  
+  try {
+    const payload = await db.getSyncToken(token.trim().toUpperCase());
+    if (!payload) {
+      return res.status(404).json({ error: 'Invalid or expired sync token.' });
+    }
+    res.status(200).json({ payload });
+  } catch (err) {
+    console.error('Error restoring sync data:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 module.exports = router;

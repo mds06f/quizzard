@@ -438,8 +438,39 @@
             </button>
           </div>
         </div>
-        <div id="history-list" class="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+        <div id="history-list" class="space-y-3 max-h-[300px] overflow-y-auto pr-1 pb-4">
           <!-- History items will be populated here -->
+        </div>
+
+        <!-- Cloud Account Sync -->
+        <div class="p-6 bg-stone-900/40 border border-stone-850 rounded-2xl space-y-4">
+          <div class="flex items-center gap-2 pb-2 border-b border-stone-850">
+            <span class="text-lg">☁️</span>
+            <h3 class="text-sm font-bold text-stone-300 tracking-wide uppercase">Cloud Account Sync</h3>
+          </div>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="space-y-2 border-b sm:border-b-0 sm:border-r border-stone-850 pb-4 sm:pb-0 sm:pr-4">
+              <p class="text-[10px] font-bold text-stone-500 tracking-wide uppercase">Backup local statistics</p>
+              <button type="button" id="btn-generate-sync-token" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold py-2 px-3 rounded-lg shadow text-xs transition duration-300">
+                Generate Sync Token
+              </button>
+              <div id="sync-token-display" class="hidden mt-2 p-2 bg-stone-950/60 border border-stone-800 rounded text-center">
+                <p class="text-[9px] text-stone-500">Use this token to sync onto other devices:</p>
+                <p id="sync-token-val" class="text-sm font-mono font-bold text-amber-400 select-all tracking-wider mt-1">SYNC-XXXX</p>
+              </div>
+            </div>
+            
+            <div class="space-y-2">
+              <p class="text-[10px] font-bold text-stone-500 tracking-wide uppercase">Restore from token</p>
+              <div class="flex gap-2">
+                <input type="text" id="sync-restore-token-input" class="w-full p-2 border border-stone-800 bg-stone-950/45 text-stone-100 placeholder-stone-600 rounded-lg text-xs font-mono tracking-wider uppercase text-center focus:outline-none" placeholder="SYNC-XXXX">
+                <button type="button" id="btn-restore-sync" class="bg-stone-800 border border-stone-750 text-stone-300 hover:text-white font-semibold py-2 px-3 rounded-lg text-xs transition flex-shrink-0">
+                  Restore
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -1304,6 +1335,88 @@
 
       // Initialize theme toggler
       initThemeToggle();
+
+      // Cloud sync token actions
+      const btnGenToken = document.getElementById('btn-generate-sync-token');
+      const syncTokenDisplay = document.getElementById('sync-token-display');
+      const syncTokenVal = document.getElementById('sync-token-val');
+      
+      if (btnGenToken && syncTokenDisplay && syncTokenVal) {
+        btnGenToken.addEventListener('click', async () => {
+          const payload = {
+            quizHistory: JSON.parse(localStorage.getItem('quizHistory') || '[]'),
+            sm2Data: JSON.parse(localStorage.getItem('sm2Data') || '{}'),
+            streakData: JSON.parse(localStorage.getItem('streakData') || '{}'),
+            userName: localStorage.getItem('userName') || '',
+            theme: localStorage.getItem('theme') || 'dark',
+            soundEnabled: localStorage.getItem('soundEnabled') || 'true',
+            vibrationEnabled: localStorage.getItem('vibrationEnabled') || 'true',
+            soundWaveform: localStorage.getItem('soundWaveform') || 'sine'
+          };
+          
+          try {
+            const response = await fetch('/api/quiz/user/sync/token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ payload })
+            });
+            const data = await response.json();
+            if (data.token) {
+              syncTokenVal.textContent = data.token;
+              syncTokenDisplay.classList.remove('hidden');
+            } else {
+              alert("Failed to generate token.");
+            }
+          } catch (err) {
+            console.error("Error backing up data:", err);
+            alert("Error backing up data to cloud.");
+          }
+        });
+      }
+      
+      const btnRestoreSync = document.getElementById('btn-restore-sync');
+      const restoreInput = document.getElementById('sync-restore-token-input');
+      if (btnRestoreSync && restoreInput) {
+        btnRestoreSync.addEventListener('click', async () => {
+          const token = restoreInput.value.trim();
+          if (!token) {
+            alert("Please enter a valid sync token.");
+            return;
+          }
+          
+          if (!confirm("Restoring will overwrite all local history and settings on this device. Do you want to continue?")) {
+            return;
+          }
+          
+          try {
+            const response = await fetch(`/api/quiz/user/sync/restore/${encodeURIComponent(token)}`);
+            if (response.status === 404) {
+              alert("Invalid or expired sync token.");
+              return;
+            }
+            const data = await response.json();
+            const payload = data.payload;
+            if (payload) {
+              if (payload.quizHistory) localStorage.setItem('quizHistory', JSON.stringify(payload.quizHistory));
+              if (payload.sm2Data) localStorage.setItem('sm2Data', JSON.stringify(payload.sm2Data));
+              if (payload.streakData) localStorage.setItem('streakData', JSON.stringify(payload.streakData));
+              if (payload.userName) localStorage.setItem('userName', payload.userName);
+              if (payload.theme) localStorage.setItem('theme', payload.theme);
+              if (payload.soundEnabled) localStorage.setItem('soundEnabled', payload.soundEnabled);
+              if (payload.vibrationEnabled) localStorage.setItem('vibrationEnabled', payload.vibrationEnabled);
+              if (payload.soundWaveform) localStorage.setItem('soundWaveform', payload.soundWaveform);
+              
+              alert("Restored data successfully! App will now refresh.");
+              window.location.reload();
+            } else {
+              alert("Invalid payload format returned.");
+            }
+          } catch (err) {
+            console.error("Error restoring data:", err);
+            alert("Error restoring data from cloud.");
+          }
+        });
+      }
 
       // Multiplayer Mode toggler
       window.multiplayerMode = 'competitive';
