@@ -245,13 +245,20 @@
         oscillator.start();
         oscillator.stop(audioCtx.currentTime + 0.08);
       }
-
       function triggerHapticFeedback() {
         if (localStorage.getItem('vibrationEnabled') !== 'false' && navigator.vibrate) {
           navigator.vibrate(30);
         }
       }
-      const TIME_LIMIT = 20;
+      let TIME_LIMIT = 20;
+      const activeDifficultySetting = window.localStorage.getItem('difficulty') || 'medium';
+      if (activeDifficultySetting === 'easy') {
+        TIME_LIMIT = 30;
+      } else if (activeDifficultySetting === 'hard') {
+        TIME_LIMIT = 12;
+      } else {
+        TIME_LIMIT = 20;
+      }
       let timerInterval = null;
       let timeLeft = TIME_LIMIT;
       let currentSessionStreak = 0;
