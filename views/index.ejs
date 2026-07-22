@@ -205,6 +205,9 @@
       let audioCtx;
 
       function playClickSound() {
+        if (localStorage.getItem('soundEnabled') === 'false') {
+          return;
+        }
         if (!audioCtx) {
           audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
@@ -226,6 +229,12 @@
 
         oscillator.start();
         oscillator.stop(audioCtx.currentTime + 0.08);
+      }
+
+      function triggerHapticFeedback() {
+        if (localStorage.getItem('vibrationEnabled') !== 'false' && navigator.vibrate) {
+          navigator.vibrate(30);
+        }
       }
       const TIME_LIMIT = 20;
       let timerInterval = null;
@@ -491,6 +500,7 @@
                 if (localStorage.getItem('soundEnabled') !== 'false') {
                   playClickSound();
                 }
+                triggerHapticFeedback();
                 const val = e.target.value;
                 const questionId = question.id;
                 answersSubmitted[`question-${questionId}`] = val;
@@ -727,6 +737,7 @@
                 if (localStorage.getItem('soundEnabled') !== 'false') {
                   playClickSound();
                 }
+                triggerHapticFeedback();
                 const val = e.target.value;
                 socket.emit('submitAnswer', { roomCode: window.localStorage.getItem('roomCode'), answerVal: val });
                 
