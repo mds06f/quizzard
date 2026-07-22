@@ -212,6 +212,22 @@
               🏆 View Leaderboard
             </button>
           </div>
+          
+          <!-- Topic Details Container -->
+          <div id="topic-details-container" class="hidden mt-3 p-3 bg-stone-900/50 border border-stone-850 rounded-xl space-y-1">
+            <div class="flex justify-between text-[11px] text-stone-400">
+              <span>Overall Difficulty:</span>
+              <span id="topic-detail-difficulty" class="font-semibold text-stone-300">-</span>
+            </div>
+            <div class="flex justify-between text-[11px] text-stone-400">
+              <span>Total Questions:</span>
+              <span id="topic-detail-questions" class="font-semibold text-stone-300">-</span>
+            </div>
+            <div class="flex justify-between text-[11px] text-stone-400">
+              <span>Your Avg Accuracy:</span>
+              <span id="topic-detail-accuracy" class="font-semibold text-amber-400">-</span>
+            </div>
+          </div>
         </div>
 
         <div>
@@ -637,6 +653,7 @@
         const sectionSelect = document.getElementById('section-select');
         if (savedSectionId && allSectionsList.some(s => s.id == savedSectionId)) {
           sectionSelect.value = savedSectionId;
+          updateTopicDetails(savedSectionId);
         }
       } catch (err) {
         console.error("Error loading sections:", err);
@@ -666,6 +683,49 @@
       if (prevValue && filtered.some(s => s.id == prevValue)) {
         sectionSelect.value = prevValue;
       }
+    }
+
+    function updateTopicDetails(sectionId) {
+      const container = document.getElementById('topic-details-container');
+      const difficultyEl = document.getElementById('topic-detail-difficulty');
+      const questionsEl = document.getElementById('topic-detail-questions');
+      const accuracyEl = document.getElementById('topic-detail-accuracy');
+      
+      if (!container || !difficultyEl || !questionsEl || !accuracyEl) return;
+      
+      if (!sectionId) {
+        container.classList.add('hidden');
+        return;
+      }
+      
+      const section = allSectionsList.find(s => s.id == sectionId);
+      if (!section) {
+        container.classList.add('hidden');
+        return;
+      }
+      
+      difficultyEl.textContent = section.difficulty || 'All Levels';
+      questionsEl.textContent = section.questionCount || 5;
+      
+      const history = JSON.parse(localStorage.getItem('quizHistory') || '[]');
+      const attempts = history.filter(item => item.sectionId == sectionId);
+      
+      if (attempts.length > 0) {
+        let totalAccuracy = 0;
+        attempts.forEach(item => {
+          const score = item.score || 0;
+          const total = item.total || 5;
+          totalAccuracy += (score / total) * 100;
+        });
+        const avgAccuracy = Math.round(totalAccuracy / attempts.length);
+        accuracyEl.textContent = `${avgAccuracy}% (${attempts.length} attempts)`;
+        accuracyEl.className = "font-semibold text-emerald-400";
+      } else {
+        accuracyEl.textContent = "Unattempted";
+        accuracyEl.className = "font-semibold text-stone-500 italic";
+      }
+      
+      container.classList.remove('hidden');
     }
 
     // Submit standard quiz setup
@@ -1076,6 +1136,14 @@
 
       // Initialize theme toggler
       initThemeToggle();
+
+      // Bind topic details updates
+      const sectionSelect = document.getElementById('section-select');
+      if (sectionSelect) {
+        sectionSelect.addEventListener('change', (e) => {
+          updateTopicDetails(e.target.value);
+        });
+      }
 
       // Streak validation
       const streakDataRaw = localStorage.getItem('streakData');
