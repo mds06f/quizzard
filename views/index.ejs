@@ -148,6 +148,11 @@
           class="bg-stone-900/60 border border-stone-850 rounded-lg px-3 py-2 hover:border-amber-500/40 transition">
           🔊
         </button>
+        
+        <button id="voice-command-toggle" type="button"
+          class="bg-stone-900/60 border border-stone-850 text-stone-400 hover:text-white rounded-lg px-3 py-2 hover:border-amber-500/40 transition flex items-center gap-1.5 text-xs font-bold" title="Voice Commands mode">
+          🎙️ <span id="voice-status-label" class="hidden sm:inline text-stone-500">Off</span>
+        </button>
       </div>
     </div>
 
@@ -161,6 +166,19 @@
       <div class="text-center">
         <p id="p2-name" class="font-bold text-stone-300">Player 2</p>
         <p id="p2-score" class="text-lg font-extrabold text-amber-400">0</p>
+      </div>
+    </div>
+
+    <!-- Cooperative Progress Scorecard Header (Hidden by default) -->
+    <div id="cooperative-scoreboard" class="hidden mb-6 flex flex-col gap-3 border border-emerald-500/20 bg-emerald-500/5 rounded-xl p-4 text-sm">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-850">
+        <span class="font-bold text-stone-300">👥 Team Co-op Study Room</span>
+        <span class="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/25">
+          Accuracy: <span id="coop-accuracy-val">100%</span>
+        </span>
+      </div>
+      <div id="coop-players-list" class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+        <!-- populated dynamically -->
       </div>
     </div>
 
@@ -585,9 +603,145 @@
         }
       });
 
+      let remediationTriggered = false;
+
       document.getElementById('quiz-form').addEventListener('submit', async function (event) {
         event.preventDefault();
         
+        // Intercept for Adaptive Remediation
+        if (!remediationTriggered && window.localStorage.getItem('multiplayer') !== 'true' && window.localStorage.getItem('challengeMode') !== 'true') {
+          const correctCount = Object.keys(answersSubmitted).filter(key => {
+            const qId = parseInt(key.replace('question-', ''), 10);
+            const q = questionsData.find(item => item.id === qId);
+            return q && parseInt(answersSubmitted[key], 10) === q.correct_option;
+          }).length;
+          
+          const accuracyRate = questionsData.length > 0 ? (correctCount / questionsData.length) : 1;
+          
+          if (accuracyRate < 0.5) {
+            remediationTriggered = true;
+            const submitBtn = document.getElementById('action-btn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<span class="animate-pulse">Loading Remediation...</span>`;
+            
+            const wrongQuestions = questionsData.filter(q => {
+              const ans = answersSubmitted[`question-${q.id}`];
+              return parseInt(ans, 10) !== q.correct_option;
+            });
+            
+            try {
+              const sectionId = window.localStorage.getItem('sectionId');
+              const response = await fetch('/api/quiz/remediation', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sectionId, wrongQuestions })
+              });
+              
+              const remQ = await response.json();
+              if (remQ && remQ.question) {
+                remQ.id = 999999;
+                questionsData.push(remQ);
+                totalQuestions = questionsData.length;
+                answersSubmitted[`question-${remQ.id}`] = null;
+                
+                const index = questionsData.length - 1;
+                const questionElem = document.createElement('div');
+                questionElem.classList.add('p-6', 'border', 'border-stone-800', 'rounded-xl', 'bg-stone-900/30', 'space-y-4', 'hidden');
+                questionElem.setAttribute('data-question-index', index);
+                
+                const optionsList = [
+                  { text: remQ.option1, val: 1 },
+                  { text: remQ.option2, val: 2 },
+                  { text: remQ.option3, val: 3 },
+                  { text: remQ.option4, val: 4 }
+                ];
+                
+                let optionsHtml = '';
+                optionsList.forEach(opt => {
+                  optionsHtml += `
+                    <label class="option-card block cursor-pointer select-none">
+                      <input type="radio" name="remediation-radio" value="${opt.val}" class="hidden">
+                      <div class="option-label p-3.5 border border-stone-800 bg-stone-950/40 text-stone-400 hover:border-stone-700 hover:text-stone-200 rounded-lg text-sm transition flex items-center">
+                        <span class="font-semibold mr-2">${String.fromCharCode(64 + opt.val)}.</span>
+                        <span>${opt.text}</span>
+                      </div>
+                    </label>
+                  `;
+                });
+                
+                questionElem.innerHTML = `
+                  <div class="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl mb-4 text-center">
+                    <p class="text-xs font-bold text-amber-400">💡 ADAPTIVE REMEDIATION BONUS QUESTION</p>
+                    <p class="text-[10px] text-stone-400 mt-0.5">Let's review the concepts you missed to boost your score!</p>
+                  </div>
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-start gap-3">
+                      <span class="bg-amber-500 text-stone-950 font-bold text-xs rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">R</span>
+                      <p class="text-lg font-medium text-stone-100">${remQ.question}</p>
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 ml-8">
+                    ${optionsHtml}
+                  </div>
+                `;
+                
+                document.getElementById('quiz-container').appendChild(questionElem);
+                
+                questionElem.querySelectorAll('input[type="radio"]').forEach(radio => {
+                  radio.addEventListener('change', (e) => {
+                    if (localStorage.getItem('soundEnabled') !== 'false') {
+                      playClickSound();
+                    }
+                    triggerHapticFeedback();
+                    const val = e.target.value;
+                    answersSubmitted[`question-${remQ.id}`] = val;
+                    
+                    questionElem.querySelectorAll('.option-card').forEach(card => {
+                      const r = card.querySelector('input[type="radio"]');
+                      const labelDiv = card.querySelector('.option-label');
+                      const optVal = parseInt(r.value, 10);
+                      
+                      labelDiv.classList.remove('hover:border-stone-700', 'hover:text-stone-200');
+                      card.classList.remove('cursor-pointer');
+                      card.classList.add('cursor-not-allowed');
+                      r.disabled = true;
+                      
+                      if (optVal === remQ.correct_option) {
+                        labelDiv.classList.remove('border-stone-800', 'bg-stone-950/40', 'text-stone-400');
+                        labelDiv.classList.add('bg-emerald-950/40', 'border-emerald-500/60', 'text-emerald-300');
+                        const check = document.createElement('span');
+                        check.textContent = '✅';
+                        check.className = 'ml-2 text-emerald-400 font-bold';
+                        labelDiv.appendChild(check);
+                      } else if (parseInt(val) === optVal) {
+                        labelDiv.classList.remove('border-stone-800', 'bg-stone-950/40', 'text-stone-400');
+                        labelDiv.classList.add('bg-red-950/40', 'border-red-500/60', 'text-red-300');
+                        const cross = document.createElement('span');
+                        cross.textContent = '❌';
+                        cross.className = 'ml-2 text-red-400 font-bold';
+                        labelDiv.appendChild(cross);
+                      }
+                    });
+                    
+                    const expDiv = document.createElement('div');
+                    expDiv.className = 'mt-4 p-4 bg-amber-950/20 border-l-2 border-amber-500/50 rounded-lg text-sm text-amber-200 animate-fade-in';
+                    expDiv.innerHTML = `<strong>Explanation:</strong> ${remQ.explanation}`;
+                    questionElem.appendChild(expDiv);
+                    
+                    updateBottomButtonState(true);
+                  });
+                });
+                
+                currentQuestionIndex = index;
+                startQuestion(index);
+                return;
+              }
+            } catch (err) {
+              console.error("Error fetching remediation question:", err);
+            }
+          }
+        }
+
         const data = { ...answersSubmitted };
 
         // Show loader on submit button
@@ -694,6 +848,112 @@
           soundToggle.textContent =
             soundEnabled ? '🔊' : '🔇';
         });
+
+        // Voice Commands Support
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        let recognition = null;
+        let isVoiceActive = false;
+        
+        const voiceBtn = document.getElementById('voice-command-toggle');
+        const voiceStatus = document.getElementById('voice-status-label');
+        
+        function selectOptionByVoice(val) {
+          const activeQDiv = document.querySelector(`#quiz-container > div:not(.hidden)`);
+          if (!activeQDiv) return;
+          
+          const radio = activeQDiv.querySelector(`input[type="radio"][value="${val}"]`);
+          if (radio && !radio.disabled) {
+            radio.checked = true;
+            radio.dispatchEvent(new Event('change'));
+          }
+        }
+
+        function triggerNextByVoice() {
+          const actionBtn = document.getElementById('action-btn');
+          if (actionBtn && actionBtn.type === 'button' && !actionBtn.disabled) {
+            actionBtn.click();
+          }
+        }
+
+        function triggerSubmitByVoice() {
+          const actionBtn = document.getElementById('action-btn');
+          if (actionBtn && actionBtn.type === 'submit' && !actionBtn.disabled) {
+            const quizForm = document.getElementById('quiz-form');
+            if (quizForm) {
+              quizForm.dispatchEvent(new Event('submit'));
+            }
+          }
+        }
+        
+        if (SpeechRecognition && voiceBtn && voiceStatus) {
+          recognition = new SpeechRecognition();
+          recognition.continuous = true;
+          recognition.interimResults = false;
+          recognition.lang = 'en-US';
+          
+          recognition.onstart = () => {
+            isVoiceActive = true;
+            voiceBtn.classList.remove('text-stone-400');
+            voiceBtn.classList.add('text-emerald-400', 'border-emerald-500/30', 'bg-emerald-950/20');
+            voiceStatus.textContent = 'Listening';
+            voiceStatus.className = 'hidden sm:inline text-emerald-400';
+          };
+          
+          recognition.onend = () => {
+            if (isVoiceActive) {
+              try { recognition.start(); } catch(e) {}
+            } else {
+              voiceBtn.classList.add('text-stone-400');
+              voiceBtn.classList.remove('text-emerald-400', 'border-emerald-500/30', 'bg-emerald-950/20');
+              voiceStatus.textContent = 'Off';
+              voiceStatus.className = 'hidden sm:inline text-stone-500';
+            }
+          };
+          
+          recognition.onerror = (e) => {
+            console.error("Speech Recognition Error:", e);
+          };
+          
+          recognition.onresult = (event) => {
+            const resultIndex = event.resultIndex;
+            const transcript = event.results[resultIndex][0].transcript.trim().toLowerCase();
+            console.log("Speech heard:", transcript);
+            
+            if (transcript.includes('option a') || transcript.includes('select a') || transcript.includes('choose a') || transcript === 'a') {
+              selectOptionByVoice(1);
+            } else if (transcript.includes('option b') || transcript.includes('select b') || transcript.includes('choose b') || transcript === 'b') {
+              selectOptionByVoice(2);
+            } else if (transcript.includes('option c') || transcript.includes('select c') || transcript.includes('choose c') || transcript === 'c') {
+              selectOptionByVoice(3);
+            } else if (transcript.includes('option d') || transcript.includes('select d') || transcript.includes('choose d') || transcript === 'd') {
+              selectOptionByVoice(4);
+            } else if (transcript.includes('next') || transcript.includes('proceed') || transcript.includes('continue')) {
+              triggerNextByVoice();
+            } else if (transcript.includes('submit') || transcript.includes('finish') || transcript.includes('done')) {
+              triggerSubmitByVoice();
+            }
+          };
+          
+          voiceBtn.addEventListener('click', () => {
+            if (!isVoiceActive) {
+              try {
+                recognition.start();
+              } catch (err) {
+                console.error(err);
+              }
+            } else {
+              isVoiceActive = false;
+              try {
+                recognition.stop();
+              } catch (err) {
+                console.error(err);
+              }
+            }
+          });
+        } else if (voiceBtn) {
+          voiceBtn.title = "Speech Recognition not supported in this browser";
+          voiceBtn.classList.add('opacity-40', 'cursor-not-allowed');
+        }
         const userName = window.localStorage.getItem('userName');
         const sectionId = window.localStorage.getItem('sectionId');
         const difficulty = window.localStorage.getItem('difficulty');
@@ -722,7 +982,13 @@
         const isMultiplayer = window.localStorage.getItem('multiplayer') === 'true';
         if (isMultiplayer) {
           const socket = io();
-          document.getElementById('multiplayer-scoreboard').classList.remove('hidden');
+          const roomMode = window.localStorage.getItem('roomMode') || 'competitive';
+          
+          if (roomMode === 'cooperative') {
+            document.getElementById('cooperative-scoreboard').classList.remove('hidden');
+          } else {
+            document.getElementById('multiplayer-scoreboard').classList.remove('hidden');
+          }
           
           socket.emit('quizReady', { roomCode: window.localStorage.getItem('roomCode') });
 
@@ -840,7 +1106,7 @@
             document.getElementById('multiplayer-announcement').classList.add('hidden');
           });
 
-          socket.on('revealAnswer', ({ correctOption, explanation }) => {
+          socket.on('revealAnswer', ({ correctOption, explanation, mode, groupAccuracy, playerAnswers }) => {
             clearInterval(timerInterval);
             const questionElem = document.querySelector(`#quiz-container > div`);
             if (!questionElem) return;
@@ -848,6 +1114,18 @@
             const optionCards = questionElem.querySelectorAll('.option-card');
             const radioChecked = questionElem.querySelector('input[type="radio"]:checked');
             const selectedOptionValue = radioChecked ? parseInt(radioChecked.value, 10) : null;
+
+            if (mode === 'cooperative') {
+              const accuracyVal = document.getElementById('coop-accuracy-val');
+              if (accuracyVal) accuracyVal.textContent = groupAccuracy + '%';
+              
+              const banner = document.getElementById('multiplayer-announcement');
+              if (banner && playerAnswers) {
+                const summaryText = playerAnswers.map(pa => `${pa.name}: ${pa.correct ? '✅' : '❌'}`).join(' | ');
+                banner.textContent = `📋 Round: ${summaryText}`;
+                banner.classList.remove('hidden');
+              }
+            }
 
             // Update correct streak tracker
             const hudStreakContainer = document.getElementById('hud-streak-container');
@@ -906,11 +1184,28 @@
           });
 
           socket.on('scoreboardUpdate', ({ players }) => {
-            if (players.length >= 2) {
-              document.getElementById('p1-name').textContent = players[0].name;
-              document.getElementById('p1-score').textContent = players[0].score;
-              document.getElementById('p2-name').textContent = players[1].name;
-              document.getElementById('p2-score').textContent = players[1].score;
+            const roomMode = window.localStorage.getItem('roomMode') || 'competitive';
+            if (roomMode === 'cooperative') {
+              const coopList = document.getElementById('coop-players-list');
+              if (coopList) {
+                coopList.innerHTML = '';
+                players.forEach(p => {
+                  const div = document.createElement('div');
+                  div.className = "flex flex-col items-center bg-stone-900 border border-stone-850 p-2 rounded-lg";
+                  div.innerHTML = `
+                    <span class="text-xs font-bold text-stone-300 truncate w-full">${p.name}</span>
+                    <span class="text-sm font-extrabold text-emerald-400 mt-1">${p.score} pts</span>
+                  `;
+                  coopList.appendChild(div);
+                });
+              }
+            } else {
+              if (players.length >= 2) {
+                document.getElementById('p1-name').textContent = players[0].name;
+                document.getElementById('p1-score').textContent = players[0].score;
+                document.getElementById('p2-name').textContent = players[1].name;
+                document.getElementById('p2-score').textContent = players[1].score;
+              }
             }
           });
 
@@ -926,16 +1221,22 @@
             banner.classList.remove('hidden');
           });
 
-          socket.on('quizEnded', ({ players }) => {
+          socket.on('quizEnded', ({ mode, groupAccuracy, players }) => {
             const myName = window.localStorage.getItem('userName');
             const me = players.find(p => p.name === myName);
-            const opponent = players.find(p => p.name !== myName);
             const score = me ? me.score : 0;
             const total = totalQuestions || 5;
             
-            const opponentDetails = opponent ? `&opponentName=${opponent.name}&opponentScore=${opponent.score}` : '';
+            const roomMode = window.localStorage.getItem('roomMode') || 'competitive';
             window.localStorage.removeItem('multiplayer');
-            window.location.href = `/result?score=${score}&total=${total}&sectionId=${window.localStorage.getItem('sectionId')}${opponentDetails}`;
+            
+            if (roomMode === 'cooperative') {
+              window.location.href = `/result?score=${score}&total=${total}&sectionId=${window.localStorage.getItem('sectionId')}&coop=true&groupAccuracy=${groupAccuracy || 100}`;
+            } else {
+              const opponent = players.find(p => p.name !== myName);
+              const opponentDetails = opponent ? `&opponentName=${opponent.name}&opponentScore=${opponent.score}` : '';
+              window.location.href = `/result?score=${score}&total=${total}&sectionId=${window.localStorage.getItem('sectionId')}${opponentDetails}`;
+            }
           });
 
           socket.on('playerDisconnected', (msg) => {

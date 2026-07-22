@@ -330,6 +330,27 @@ const db = {
     });
     
     return entries.slice(0, 10);
+  },
+
+  // Save sync token
+  saveSyncToken: async (token, payload) => {
+    const data = readData();
+    if (!data.sync_tokens) {
+      data.sync_tokens = {};
+    }
+    data.sync_tokens[token] = {
+      payload,
+      timestamp: Date.now()
+    };
+    writeData(data);
+    return true;
+  },
+
+  // Get sync token payload
+  getSyncToken: async (token) => {
+    const data = readData();
+    if (!data.sync_tokens || !data.sync_tokens[token]) return null;
+    return data.sync_tokens[token].payload;
   }
 };
 

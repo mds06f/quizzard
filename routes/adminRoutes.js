@@ -1,6 +1,8 @@
 const express = require('express');
 const router = express.Router();
 const db = require('../db');
+const multer = require('multer');
+const upload = multer({ limits: { fileSize: 5 * 1024 * 1024 } });
 
 // Middleware to verify admin session
 function isAdmin(req, res, next) {
@@ -144,6 +146,139 @@ router.post('/questions/:id/delete', isAdmin, async (req, res) => {
   } catch (err) {
     console.error(err);
     res.status(500).send('Error deleting question');
+  }
+});
+
+// GET export questions to CSV
+router.get('/export-questions', isAdmin, async (req, res) => {
+  try {
+    const questions = await db.getAllQuestions();
+    const headers = ['section_id', 'question', 'option1', 'option2', 'option3', 'option4', 'correct_option', 'difficulty', 'explanation'];
+    let csvContent = headers.join(',') + '\n';
+    
+    questions.forEach(q => {
+      const row = [
+        q.section_id,
+        `"${(q.question || '').replace(/"/g, '""')}"`,
+        `"${(q.option1 || '').replace(/"/g, '""')}"`,
+        `"${(q.option2 || '').replace(/"/g, '""')}"`,
+        `"${(q.option3 || '').replace(/"/g, '""')}"`,
+        `"${(q.option4 || '').replace(/"/g, '""')}"`,
+        q.correct_option,
+        `"${(q.difficulty || '').replace(/"/g, '""')}"`,
+        `"${(q.explanation || '').replace(/"/g, '""')}"`
+      ];
+      csvContent += row.join(',') + '\n';
+    });
+    
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', 'attachment; filename=questions.csv');
+    res.status(200).send(csvContent);
+  } catch (err) {
+    console.error('Error exporting questions:', err);
+    res.status(500).send('Error exporting questions');
+  }
+});
+
+// Helper to parse CSV strings
+function parseCSV(text) {
+  const lines = [];
+  let row = [""];
+  let inQuotes = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const nextChar = text[i + 1];
+
+    if (char === '"') {
+      if (inQuotes && nextChar === '"') {
+        row[row.length - 1] += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      row.push('');
+    } else if ((char === '\r' || char === '\n') && !inQuotes) {
+      if (char === '\r' && nextChar === '\n') {
+        i++;
+      }
+      lines.push(row);
+      row = [''];
+    } else {
+      row[row.length - 1] += char;
+    }
+  }
+  if (row.length > 1 || row[0] !== '') {
+    lines.push(row);
+  }
+  return lines;
+}
+
+// POST import questions from CSV
+router.post('/import-questions', isAdmin, upload.single('csvFile'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).send('No file uploaded.');
+  }
+  
+  try {
+    const csvText = req.file.buffer.toString('utf8');
+    const rows = parseCSV(csvText);
+    
+    if (rows.length <= 1) {
+      return res.status(400).send('CSV file is empty or missing headers.');
+    }
+    
+    const headers = rows[0].map(h => h.trim().toLowerCase());
+    const secIdIdx = headers.indexOf('section_id');
+    const questionIdx = headers.indexOf('question');
+    const opt1Idx = headers.indexOf('option1');
+    const opt2Idx = headers.indexOf('option2');
+    const opt3Idx = headers.indexOf('option3');
+    const opt4Idx = headers.indexOf('option4');
+    const correctIdx = headers.indexOf('correct_option');
+    const diffIdx = headers.indexOf('difficulty');
+    const expIdx = headers.indexOf('explanation');
+    
+    if (questionIdx === -1 || opt1Idx === -1 || opt2Idx === -1 || opt3Idx === -1 || opt4Idx === -1 || correctIdx === -1) {
+      return res.status(400).send('CSV file missing required question/option columns.');
+    }
+    
+    const sections = await db.getAllSections();
+    const sectionIdsSet = new Set(sections.map(s => s.id));
+    
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      if (row.length < 6) continue;
+      
+      const questionText = row[questionIdx]?.trim();
+      if (!questionText) continue;
+      
+      let sectionId = secIdIdx !== -1 ? parseInt(row[secIdIdx], 10) : null;
+      if (isNaN(sectionId) || !sectionIdsSet.has(sectionId)) {
+        sectionId = sections.length > 0 ? sections[0].id : 1;
+      }
+      
+      const correctVal = correctIdx !== -1 ? parseInt(row[correctIdx], 10) : 1;
+      const difficulty = diffIdx !== -1 ? (row[diffIdx]?.trim().toLowerCase() || 'medium') : 'medium';
+      const explanation = expIdx !== -1 ? (row[expIdx]?.trim() || '') : '';
+      
+      await db.addQuestion(sectionId, {
+        question: questionText,
+        option1: row[opt1Idx]?.trim() || '',
+        option2: row[opt2Idx]?.trim() || '',
+        option3: row[opt3Idx]?.trim() || '',
+        option4: row[opt4Idx]?.trim() || '',
+        correct_option: isNaN(correctVal) ? 1 : correctVal,
+        difficulty: ['easy', 'medium', 'hard'].includes(difficulty) ? difficulty : 'medium',
+        explanation: explanation
+      });
+    }
+    
+    res.redirect('/admin');
+  } catch (err) {
+    console.error('Error importing questions:', err);
+    res.status(500).send('Error importing questions');
   }
 });
 

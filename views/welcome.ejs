@@ -281,6 +281,14 @@
 
         <!-- Multiplayer Lobby Panel (Hidden initially) -->
         <div id="multiplayer-lobby" class="hidden border border-stone-800 bg-stone-950/20 rounded-xl p-4 space-y-4">
+          <!-- Room Mode Toggle -->
+          <div class="flex items-center justify-between pb-3 border-b border-stone-850">
+            <span class="text-xs font-bold text-stone-300 tracking-wide uppercase">Multiplayer Mode</span>
+            <div class="flex bg-stone-900 border border-stone-800 rounded-lg p-0.5">
+              <button type="button" id="btn-multi-mode-competitive" class="px-3 py-1 text-[10px] font-bold rounded bg-amber-600 text-white transition cursor-pointer" data-mode="competitive">1v1 Duel</button>
+              <button type="button" id="btn-multi-mode-cooperative" class="px-3 py-1 text-[10px] font-bold rounded text-stone-400 hover:text-stone-200 transition cursor-pointer" data-mode="cooperative">Co-op Study</button>
+            </div>
+          </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div class="space-y-2 text-center sm:text-left border-b sm:border-b-0 sm:border-r border-stone-800 pb-4 sm:pb-0 sm:pr-4">
               <p class="text-[10px] font-semibold text-stone-400 tracking-wider">HOST A GAME</p>
@@ -430,8 +438,39 @@
             </button>
           </div>
         </div>
-        <div id="history-list" class="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+        <div id="history-list" class="space-y-3 max-h-[300px] overflow-y-auto pr-1 pb-4">
           <!-- History items will be populated here -->
+        </div>
+
+        <!-- Cloud Account Sync -->
+        <div class="p-6 bg-stone-900/40 border border-stone-850 rounded-2xl space-y-4">
+          <div class="flex items-center gap-2 pb-2 border-b border-stone-850">
+            <span class="text-lg">☁️</span>
+            <h3 class="text-sm font-bold text-stone-300 tracking-wide uppercase">Cloud Account Sync</h3>
+          </div>
+          
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="space-y-2 border-b sm:border-b-0 sm:border-r border-stone-850 pb-4 sm:pb-0 sm:pr-4">
+              <p class="text-[10px] font-bold text-stone-500 tracking-wide uppercase">Backup local statistics</p>
+              <button type="button" id="btn-generate-sync-token" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold py-2 px-3 rounded-lg shadow text-xs transition duration-300">
+                Generate Sync Token
+              </button>
+              <div id="sync-token-display" class="hidden mt-2 p-2 bg-stone-950/60 border border-stone-800 rounded text-center">
+                <p class="text-[9px] text-stone-500">Use this token to sync onto other devices:</p>
+                <p id="sync-token-val" class="text-sm font-mono font-bold text-amber-400 select-all tracking-wider mt-1">SYNC-XXXX</p>
+              </div>
+            </div>
+            
+            <div class="space-y-2">
+              <p class="text-[10px] font-bold text-stone-500 tracking-wide uppercase">Restore from token</p>
+              <div class="flex gap-2">
+                <input type="text" id="sync-restore-token-input" class="w-full p-2 border border-stone-800 bg-stone-950/45 text-stone-100 placeholder-stone-600 rounded-lg text-xs font-mono tracking-wider uppercase text-center focus:outline-none" placeholder="SYNC-XXXX">
+                <button type="button" id="btn-restore-sync" class="bg-stone-800 border border-stone-750 text-stone-300 hover:text-white font-semibold py-2 px-3 rounded-lg text-xs transition flex-shrink-0">
+                  Restore
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -447,6 +486,34 @@
           <button id="btn-start-review" type="button" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-semibold py-3 px-4 rounded-lg shadow-lg active:scale-[0.99] transition duration-300 flex items-center justify-center gap-2">
             🚀 Start Spaced Review
           </button>
+        </div>
+
+        <!-- Mastery Board Visualization -->
+        <div class="p-6 bg-stone-900/40 border border-stone-850 rounded-2xl space-y-4">
+          <div class="flex justify-between items-center pb-2 border-b border-stone-850">
+            <h3 class="text-sm font-bold text-stone-300 tracking-wide uppercase">🧠 Spaced Repetition Mastery Board</h3>
+          </div>
+          
+          <!-- Summary statistics row -->
+          <div class="grid grid-cols-3 gap-3">
+            <div class="p-3 bg-stone-950/40 border border-stone-850 rounded-xl text-center">
+              <p class="text-[9px] text-stone-500 uppercase font-bold tracking-wider">Total Items</p>
+              <p id="mastery-total-items" class="text-lg font-extrabold text-amber-400 mt-0.5">0</p>
+            </div>
+            <div class="p-3 bg-stone-950/40 border border-stone-850 rounded-xl text-center">
+              <p class="text-[9px] text-stone-500 uppercase font-bold tracking-wider">Mastered</p>
+              <p id="mastery-mastered-items" class="text-lg font-extrabold text-emerald-400 mt-0.5">0</p>
+            </div>
+            <div class="p-3 bg-stone-950/40 border border-stone-850 rounded-xl text-center">
+              <p class="text-[9px] text-stone-500 uppercase font-bold tracking-wider">Avg Ease</p>
+              <p id="mastery-avg-ef" class="text-lg font-extrabold text-stone-200 mt-0.5">2.50</p>
+            </div>
+          </div>
+
+          <!-- Mastery List Grid/Container -->
+          <div class="max-h-[250px] overflow-y-auto border border-stone-850 rounded-xl divide-y divide-stone-850 bg-stone-950/20" id="mastery-list-container">
+            <p class="text-stone-500 text-xs text-center py-6 italic">No review items scheduled yet. Take a quiz to start building your Mastery Board!</p>
+          </div>
         </div>
       </div>
 
@@ -537,7 +604,7 @@
       renderHistory();
     });
 
-    function updateSpacedReviewUI() {
+    async function updateSpacedReviewUI() {
       const sm2Data = JSON.parse(localStorage.getItem('sm2Data') || '{}');
       const today = new Date();
       today.setHours(0,0,0,0);
@@ -577,6 +644,77 @@
             btnStart.classList.add('opacity-50', 'cursor-not-allowed');
           }
         }
+      }
+
+      // Render Mastery Board
+      const masteryListContainer = document.getElementById('mastery-list-container');
+      const totalEl = document.getElementById('mastery-total-items');
+      const masteredEl = document.getElementById('mastery-mastered-items');
+      const avgEfEl = document.getElementById('mastery-avg-ef');
+      const qIds = Object.keys(sm2Data);
+      
+      if (qIds.length === 0) {
+        if (masteryListContainer) {
+          masteryListContainer.innerHTML = '<p class="text-stone-500 text-xs text-center py-6 italic">No review items scheduled yet. Take a quiz to start building your Mastery Board!</p>';
+        }
+        if (totalEl) totalEl.textContent = '0';
+        if (masteredEl) masteredEl.textContent = '0';
+        if (avgEfEl) avgEfEl.textContent = '2.50';
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/quiz/questions-by-ids', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: qIds.map(Number) })
+        });
+        const questions = await response.json();
+        
+        let masteredCount = 0;
+        let totalEf = 0;
+        masteryListContainer.innerHTML = '';
+        
+        questions.forEach(q => {
+          const data = sm2Data[q.id];
+          if (!data) return;
+          
+          totalEf += data.easeFactor;
+          const isMastered = data.easeFactor >= 2.5 && data.repetitions >= 3;
+          if (isMastered) masteredCount++;
+          
+          let statusText = "Learning";
+          let statusClass = "border-amber-500/30 bg-amber-500/10 text-amber-400";
+          if (isMastered) {
+            statusText = "Mastered";
+            statusClass = "border-emerald-500/30 bg-emerald-500/10 text-emerald-400";
+          } else if (data.repetitions === 0) {
+            statusText = "Struggling";
+            statusClass = "border-red-500/30 bg-red-500/10 text-red-400";
+          }
+          
+          const dateStr = new Date(data.dueDate).toLocaleDateString();
+          
+          const card = document.createElement('div');
+          card.className = "p-3 space-y-1.5 text-left border-b border-stone-850";
+          card.innerHTML = `
+            <div class="flex justify-between items-start gap-3">
+              <span class="text-xs font-medium text-stone-200 line-clamp-2">${q.question}</span>
+              <span class="px-2 py-0.5 text-[9px] font-bold rounded-full border ${statusClass} shrink-0">${statusText}</span>
+            </div>
+            <div class="flex justify-between text-[10px] text-stone-500">
+              <span>EF: <strong class="text-stone-400">${data.easeFactor.toFixed(2)}</strong> | Reps: <strong class="text-stone-400">${data.repetitions}</strong></span>
+              <span>Next review: <strong class="text-stone-400">${dateStr}</strong></span>
+            </div>
+          `;
+          masteryListContainer.appendChild(card);
+        });
+        
+        if (totalEl) totalEl.textContent = questions.length;
+        if (masteredEl) masteredEl.textContent = masteredCount;
+        if (avgEfEl) avgEfEl.textContent = (totalEf / questions.length).toFixed(2);
+      } catch (err) {
+        console.error("Error loading mastery board details:", err);
       }
     }
 
@@ -1000,12 +1138,13 @@
         document.getElementById('btn-host-room').textContent = 'Room Created';
       });
 
-      socket.on('roomReady', ({ roomCode, sectionId, difficulty, count }) => {
+      socket.on('roomReady', ({ roomCode, sectionId, difficulty, count, mode }) => {
         window.localStorage.setItem('roomCode', roomCode);
         window.localStorage.setItem('sectionId', sectionId);
         window.localStorage.setItem('difficulty', difficulty);
         window.localStorage.setItem('questionCount', count);
         window.localStorage.setItem('multiplayer', 'true');
+        window.localStorage.setItem('roomMode', mode || 'competitive');
         
         const userName = userNameInput.value.trim();
         window.localStorage.setItem('userName', userName);
@@ -1067,7 +1206,8 @@
         }
 
         const s = initSocket();
-        s.emit('createRoom', { userName, sectionId, difficulty, count });
+        const mode = window.multiplayerMode || 'competitive';
+        s.emit('createRoom', { userName, sectionId, difficulty, count, mode });
       });
     }
 
@@ -1195,6 +1335,105 @@
 
       // Initialize theme toggler
       initThemeToggle();
+
+      // Cloud sync token actions
+      const btnGenToken = document.getElementById('btn-generate-sync-token');
+      const syncTokenDisplay = document.getElementById('sync-token-display');
+      const syncTokenVal = document.getElementById('sync-token-val');
+      
+      if (btnGenToken && syncTokenDisplay && syncTokenVal) {
+        btnGenToken.addEventListener('click', async () => {
+          const payload = {
+            quizHistory: JSON.parse(localStorage.getItem('quizHistory') || '[]'),
+            sm2Data: JSON.parse(localStorage.getItem('sm2Data') || '{}'),
+            streakData: JSON.parse(localStorage.getItem('streakData') || '{}'),
+            userName: localStorage.getItem('userName') || '',
+            theme: localStorage.getItem('theme') || 'dark',
+            soundEnabled: localStorage.getItem('soundEnabled') || 'true',
+            vibrationEnabled: localStorage.getItem('vibrationEnabled') || 'true',
+            soundWaveform: localStorage.getItem('soundWaveform') || 'sine'
+          };
+          
+          try {
+            const response = await fetch('/api/quiz/user/sync/token', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ payload })
+            });
+            const data = await response.json();
+            if (data.token) {
+              syncTokenVal.textContent = data.token;
+              syncTokenDisplay.classList.remove('hidden');
+            } else {
+              alert("Failed to generate token.");
+            }
+          } catch (err) {
+            console.error("Error backing up data:", err);
+            alert("Error backing up data to cloud.");
+          }
+        });
+      }
+      
+      const btnRestoreSync = document.getElementById('btn-restore-sync');
+      const restoreInput = document.getElementById('sync-restore-token-input');
+      if (btnRestoreSync && restoreInput) {
+        btnRestoreSync.addEventListener('click', async () => {
+          const token = restoreInput.value.trim();
+          if (!token) {
+            alert("Please enter a valid sync token.");
+            return;
+          }
+          
+          if (!confirm("Restoring will overwrite all local history and settings on this device. Do you want to continue?")) {
+            return;
+          }
+          
+          try {
+            const response = await fetch(`/api/quiz/user/sync/restore/${encodeURIComponent(token)}`);
+            if (response.status === 404) {
+              alert("Invalid or expired sync token.");
+              return;
+            }
+            const data = await response.json();
+            const payload = data.payload;
+            if (payload) {
+              if (payload.quizHistory) localStorage.setItem('quizHistory', JSON.stringify(payload.quizHistory));
+              if (payload.sm2Data) localStorage.setItem('sm2Data', JSON.stringify(payload.sm2Data));
+              if (payload.streakData) localStorage.setItem('streakData', JSON.stringify(payload.streakData));
+              if (payload.userName) localStorage.setItem('userName', payload.userName);
+              if (payload.theme) localStorage.setItem('theme', payload.theme);
+              if (payload.soundEnabled) localStorage.setItem('soundEnabled', payload.soundEnabled);
+              if (payload.vibrationEnabled) localStorage.setItem('vibrationEnabled', payload.vibrationEnabled);
+              if (payload.soundWaveform) localStorage.setItem('soundWaveform', payload.soundWaveform);
+              
+              alert("Restored data successfully! App will now refresh.");
+              window.location.reload();
+            } else {
+              alert("Invalid payload format returned.");
+            }
+          } catch (err) {
+            console.error("Error restoring data:", err);
+            alert("Error restoring data from cloud.");
+          }
+        });
+      }
+
+      // Multiplayer Mode toggler
+      window.multiplayerMode = 'competitive';
+      const btnComp = document.getElementById('btn-multi-mode-competitive');
+      const btnCoop = document.getElementById('btn-multi-mode-cooperative');
+      if (btnComp && btnCoop) {
+        btnComp.addEventListener('click', () => {
+          window.multiplayerMode = 'competitive';
+          btnComp.className = "px-3 py-1 text-[10px] font-bold rounded bg-amber-600 text-white transition cursor-pointer";
+          btnCoop.className = "px-3 py-1 text-[10px] font-bold rounded text-stone-400 hover:text-stone-200 transition cursor-pointer";
+        });
+        btnCoop.addEventListener('click', () => {
+          window.multiplayerMode = 'cooperative';
+          btnCoop.className = "px-3 py-1 text-[10px] font-bold rounded bg-amber-600 text-white transition cursor-pointer";
+          btnComp.className = "px-3 py-1 text-[10px] font-bold rounded text-stone-400 hover:text-stone-200 transition cursor-pointer";
+        });
+      }
 
       // Initialize settings waveform select
       const settingsWaveform = document.getElementById('settings-waveform');
