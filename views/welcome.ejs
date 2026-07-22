@@ -448,6 +448,34 @@
             🚀 Start Spaced Review
           </button>
         </div>
+
+        <!-- Mastery Board Visualization -->
+        <div class="p-6 bg-stone-900/40 border border-stone-850 rounded-2xl space-y-4">
+          <div class="flex justify-between items-center pb-2 border-b border-stone-850">
+            <h3 class="text-sm font-bold text-stone-300 tracking-wide uppercase">🧠 Spaced Repetition Mastery Board</h3>
+          </div>
+          
+          <!-- Summary statistics row -->
+          <div class="grid grid-cols-3 gap-3">
+            <div class="p-3 bg-stone-950/40 border border-stone-850 rounded-xl text-center">
+              <p class="text-[9px] text-stone-500 uppercase font-bold tracking-wider">Total Items</p>
+              <p id="mastery-total-items" class="text-lg font-extrabold text-amber-400 mt-0.5">0</p>
+            </div>
+            <div class="p-3 bg-stone-950/40 border border-stone-850 rounded-xl text-center">
+              <p class="text-[9px] text-stone-500 uppercase font-bold tracking-wider">Mastered</p>
+              <p id="mastery-mastered-items" class="text-lg font-extrabold text-emerald-400 mt-0.5">0</p>
+            </div>
+            <div class="p-3 bg-stone-950/40 border border-stone-850 rounded-xl text-center">
+              <p class="text-[9px] text-stone-500 uppercase font-bold tracking-wider">Avg Ease</p>
+              <p id="mastery-avg-ef" class="text-lg font-extrabold text-stone-200 mt-0.5">2.50</p>
+            </div>
+          </div>
+
+          <!-- Mastery List Grid/Container -->
+          <div class="max-h-[250px] overflow-y-auto border border-stone-850 rounded-xl divide-y divide-stone-850 bg-stone-950/20" id="mastery-list-container">
+            <p class="text-stone-500 text-xs text-center py-6 italic">No review items scheduled yet. Take a quiz to start building your Mastery Board!</p>
+          </div>
+        </div>
       </div>
 
     </div>
@@ -537,7 +565,7 @@
       renderHistory();
     });
 
-    function updateSpacedReviewUI() {
+    async function updateSpacedReviewUI() {
       const sm2Data = JSON.parse(localStorage.getItem('sm2Data') || '{}');
       const today = new Date();
       today.setHours(0,0,0,0);
@@ -577,6 +605,77 @@
             btnStart.classList.add('opacity-50', 'cursor-not-allowed');
           }
         }
+      }
+
+      // Render Mastery Board
+      const masteryListContainer = document.getElementById('mastery-list-container');
+      const totalEl = document.getElementById('mastery-total-items');
+      const masteredEl = document.getElementById('mastery-mastered-items');
+      const avgEfEl = document.getElementById('mastery-avg-ef');
+      const qIds = Object.keys(sm2Data);
+      
+      if (qIds.length === 0) {
+        if (masteryListContainer) {
+          masteryListContainer.innerHTML = '<p class="text-stone-500 text-xs text-center py-6 italic">No review items scheduled yet. Take a quiz to start building your Mastery Board!</p>';
+        }
+        if (totalEl) totalEl.textContent = '0';
+        if (masteredEl) masteredEl.textContent = '0';
+        if (avgEfEl) avgEfEl.textContent = '2.50';
+        return;
+      }
+      
+      try {
+        const response = await fetch('/api/quiz/questions-by-ids', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ids: qIds.map(Number) })
+        });
+        const questions = await response.json();
+        
+        let masteredCount = 0;
+        let totalEf = 0;
+        masteryListContainer.innerHTML = '';
+        
+        questions.forEach(q => {
+          const data = sm2Data[q.id];
+          if (!data) return;
+          
+          totalEf += data.easeFactor;
+          const isMastered = data.easeFactor >= 2.5 && data.repetitions >= 3;
+          if (isMastered) masteredCount++;
+          
+          let statusText = "Learning";
+          let statusClass = "border-amber-500/30 bg-amber-500/10 text-amber-400";
+          if (isMastered) {
+            statusText = "Mastered";
+            statusClass = "border-emerald-500/30 bg-emerald-500/10 text-emerald-400";
+          } else if (data.repetitions === 0) {
+            statusText = "Struggling";
+            statusClass = "border-red-500/30 bg-red-500/10 text-red-400";
+          }
+          
+          const dateStr = new Date(data.dueDate).toLocaleDateString();
+          
+          const card = document.createElement('div');
+          card.className = "p-3 space-y-1.5 text-left border-b border-stone-850";
+          card.innerHTML = `
+            <div class="flex justify-between items-start gap-3">
+              <span class="text-xs font-medium text-stone-200 line-clamp-2">${q.question}</span>
+              <span class="px-2 py-0.5 text-[9px] font-bold rounded-full border ${statusClass} shrink-0">${statusText}</span>
+            </div>
+            <div class="flex justify-between text-[10px] text-stone-500">
+              <span>EF: <strong class="text-stone-400">${data.easeFactor.toFixed(2)}</strong> | Reps: <strong class="text-stone-400">${data.repetitions}</strong></span>
+              <span>Next review: <strong class="text-stone-400">${dateStr}</strong></span>
+            </div>
+          `;
+          masteryListContainer.appendChild(card);
+        });
+        
+        if (totalEl) totalEl.textContent = questions.length;
+        if (masteredEl) masteredEl.textContent = masteredCount;
+        if (avgEfEl) avgEfEl.textContent = (totalEf / questions.length).toFixed(2);
+      } catch (err) {
+        console.error("Error loading mastery board details:", err);
       }
     }
 
