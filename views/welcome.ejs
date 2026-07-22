@@ -194,6 +194,12 @@
       <form id="standard-form" class="space-y-6">
         <div>
           <label for="section-select" class="block text-sm font-semibold text-stone-300 mb-2 tracking-wide">SELECT TOPIC</label>
+          <!-- Topic Search Bar -->
+          <div class="neon-border flex rounded-lg border border-stone-800 bg-stone-950/45 transition duration-300 mb-3">
+            <span class="inline-flex items-center px-3 text-stone-600 text-sm">🔍</span>
+            <input type="text" id="topic-search" class="block w-full p-2.5 bg-transparent text-stone-100 placeholder-stone-600 focus:outline-none text-xs" placeholder="Search topics...">
+          </div>
+
           <div class="neon-border flex rounded-lg border border-stone-800 bg-stone-950/45 transition duration-300">
             <span class="inline-flex items-center px-3 text-stone-600 text-lg">🏷️</span>
             <select id="section-select" class="block w-full p-3 bg-transparent text-stone-300 focus:outline-none text-base cursor-pointer" required>
@@ -589,26 +595,47 @@
       }
     });
 
+    let allSectionsList = [];
+
     // Populate drop down with sections
     async function loadSections() {
       try {
         const response = await fetch('/api/quiz/sections');
-        const sections = await response.json();
-        const sectionSelect = document.getElementById('section-select');
-        sections.forEach(section => {
-          const option = document.createElement('option');
-          option.value = section.id;
-          option.textContent = section.name;
-          option.className = "bg-stone-900 text-stone-100";
-          sectionSelect.appendChild(option);
-        });
+        allSectionsList = await response.json();
+        renderFilteredSections('');
 
         const savedSectionId = window.localStorage.getItem('sectionId');
-        if (savedSectionId) {
+        const sectionSelect = document.getElementById('section-select');
+        if (savedSectionId && allSectionsList.some(s => s.id == savedSectionId)) {
           sectionSelect.value = savedSectionId;
         }
       } catch (err) {
         console.error("Error loading sections:", err);
+      }
+    }
+
+    function renderFilteredSections(query) {
+      const sectionSelect = document.getElementById('section-select');
+      if (!sectionSelect) return;
+      
+      const prevValue = sectionSelect.value;
+      
+      sectionSelect.innerHTML = '<option value="" disabled selected class="bg-stone-950 text-stone-400">Select a section</option>';
+      
+      const filtered = allSectionsList.filter(section => 
+        section.name.toLowerCase().includes(query.toLowerCase())
+      );
+      
+      filtered.forEach(section => {
+        const option = document.createElement('option');
+        option.value = section.id;
+        option.textContent = section.name;
+        option.className = "bg-stone-900 text-stone-100";
+        sectionSelect.appendChild(option);
+      });
+      
+      if (prevValue && filtered.some(s => s.id == prevValue)) {
+        sectionSelect.value = prevValue;
       }
     }
 
@@ -1007,6 +1034,14 @@
         settingsVibration.checked = localStorage.getItem('vibrationEnabled') !== 'false';
         settingsVibration.addEventListener('change', (e) => {
           localStorage.setItem('vibrationEnabled', e.target.checked ? 'true' : 'false');
+        });
+      }
+
+      // Bind topic search field
+      const topicSearch = document.getElementById('topic-search');
+      if (topicSearch) {
+        topicSearch.addEventListener('input', (e) => {
+          renderFilteredSections(e.target.value.trim());
         });
       }
 
