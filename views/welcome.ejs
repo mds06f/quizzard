@@ -388,9 +388,14 @@
       <div id="history-panel" class="hidden space-y-6">
         <div class="flex justify-between items-center mb-2">
           <h3 class="text-sm font-semibold text-stone-300 tracking-wide">PAST ATTEMPTS</h3>
-          <button id="btn-clear-history" type="button" class="text-xs text-red-400 hover:text-red-300 hover:underline transition">
-            Clear History
-          </button>
+          <div class="flex items-center gap-4">
+            <button id="btn-export-history" type="button" class="text-xs text-amber-400 hover:text-amber-300 hover:underline transition">
+              💾 Export Progress
+            </button>
+            <button id="btn-clear-history" type="button" class="text-xs text-red-400 hover:text-red-300 hover:underline transition">
+              Clear History
+            </button>
+          </div>
         </div>
         <div id="history-list" class="space-y-3 max-h-[300px] overflow-y-auto pr-1">
           <!-- History items will be populated here -->
@@ -570,6 +575,30 @@
           </div>
         `;
         historyList.appendChild(historyCard);
+      });
+    }
+
+     const btnExportHistory = document.getElementById('btn-export-history');
+    if (btnExportHistory) {
+      btnExportHistory.addEventListener('click', () => {
+        const backup = {
+          userName: localStorage.getItem('userName') || '',
+          quizHistory: JSON.parse(localStorage.getItem('quizHistory') || '[]'),
+          sm2Data: JSON.parse(localStorage.getItem('sm2Data') || '{}'),
+          soundEnabled: localStorage.getItem('soundEnabled') !== 'false',
+          vibrationEnabled: localStorage.getItem('vibrationEnabled') !== 'false'
+        };
+        
+        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        const dateString = new Date().toISOString().slice(0, 10);
+        a.href = url;
+        a.download = `quizzard-backup-${dateString}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
       });
     }
 
