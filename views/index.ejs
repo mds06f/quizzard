@@ -180,12 +180,27 @@
         <div id="timer-bar-container" class="space-y-2 mb-6">
           <div class="flex justify-between items-center text-xs text-stone-400">
             <span id="question-counter" class="font-medium text-stone-300">Question 1 of 5</span>
+            <!-- HUD Streak Tracker -->
+            <span id="hud-streak-container" class="hidden bg-orange-500/10 border border-orange-500/35 text-orange-400 text-[10px] font-bold px-2 py-0.5 rounded-full flex items-center gap-1 transition-all duration-150">
+              🔥 Streak <span id="hud-streak-count">0</span>
+            </span>
             <span id="timer-text" class="font-bold text-amber-400 flex items-center gap-1">
               ⏱️ <span id="timer-seconds">20</span>s
             </span>
           </div>
           <div class="h-1.5 w-full bg-stone-900 rounded-full overflow-hidden border border-stone-800">
             <div id="timer-progress" class="h-full bg-gradient-to-r from-amber-500 to-orange-500 transition-all duration-100" style="width: 100%;"></div>
+          </div>
+        </div>
+
+        <!-- Visual Progress Bar Indicator -->
+        <div id="quiz-progress-container" class="space-y-1.5 mb-6">
+          <div class="flex justify-between items-center text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+            <span>Progress Indicator</span>
+            <span id="quiz-progress-text">0 / 0 Completed</span>
+          </div>
+          <div class="h-1.5 w-full bg-stone-900 rounded-full overflow-hidden border border-stone-800">
+            <div id="quiz-progress-bar" class="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300" style="width: 0%;"></div>
           </div>
         </div>
 
@@ -205,6 +220,9 @@
       let audioCtx;
 
       function playClickSound() {
+        if (localStorage.getItem('soundEnabled') === 'false') {
+          return;
+        }
         if (!audioCtx) {
           audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
@@ -227,9 +245,16 @@
         oscillator.start();
         oscillator.stop(audioCtx.currentTime + 0.08);
       }
+
+      function triggerHapticFeedback() {
+        if (localStorage.getItem('vibrationEnabled') !== 'false' && navigator.vibrate) {
+          navigator.vibrate(30);
+        }
+      }
       const TIME_LIMIT = 20;
       let timerInterval = null;
       let timeLeft = TIME_LIMIT;
+      let currentSessionStreak = 0;
       let currentQuestionIndex = 0;
       let totalQuestions = 0;
       let questionsData = [];
@@ -287,6 +312,17 @@
       function startQuestion(index) {
         currentQuestionIndex = index;
         
+        // Update visual progress bar indicator
+        const progressPercent = totalQuestions > 0 ? ((index) / totalQuestions) * 100 : 0;
+        const progressBar = document.getElementById('quiz-progress-bar');
+        const progressText = document.getElementById('quiz-progress-text');
+        if (progressBar) {
+          progressBar.style.width = `${progressPercent}%`;
+        }
+        if (progressText) {
+          progressText.textContent = `${index} / ${totalQuestions} Completed`;
+        }
+
         // Show current question, hide others
         const questionElems = document.querySelectorAll('#quiz-container > div');
         questionElems.forEach((elem, idx) => {
@@ -333,6 +369,32 @@
         // Highlight correct and selected options
         const questionData = questionsData[questionIndex];
         const correctOption = questionData.correct_option;
+
+        // Update correct streak tracker
+        const hudStreakContainer = document.getElementById('hud-streak-container');
+        const hudStreakCount = document.getElementById('hud-streak-count');
+        
+        if (selectedOptionValue !== null && parseInt(selectedOptionValue, 10) === correctOption) {
+          currentSessionStreak++;
+        } else {
+          currentSessionStreak = 0;
+        }
+
+        if (hudStreakContainer && hudStreakCount) {
+          hudStreakCount.textContent = currentSessionStreak;
+          if (currentSessionStreak > 0) {
+            hudStreakContainer.classList.remove('hidden');
+            hudStreakContainer.classList.add('flex');
+            hudStreakContainer.style.transform = 'scale(1.1)';
+            setTimeout(() => {
+              hudStreakContainer.style.transform = 'scale(1)';
+            }, 150);
+          } else {
+            hudStreakContainer.classList.add('hidden');
+            hudStreakContainer.classList.remove('flex');
+          }
+        }
+
         const optionCards = questionElem.querySelectorAll('.option-card');
         
         optionCards.forEach((card) => {
@@ -491,6 +553,7 @@
                 if (localStorage.getItem('soundEnabled') !== 'false') {
                   playClickSound();
                 }
+                triggerHapticFeedback();
                 const val = e.target.value;
                 const questionId = question.id;
                 answersSubmitted[`question-${questionId}`] = val;
@@ -727,6 +790,7 @@
                 if (localStorage.getItem('soundEnabled') !== 'false') {
                   playClickSound();
                 }
+                triggerHapticFeedback();
                 const val = e.target.value;
                 socket.emit('submitAnswer', { roomCode: window.localStorage.getItem('roomCode'), answerVal: val });
                 
@@ -737,6 +801,18 @@
             });
 
             document.getElementById('question-counter').textContent = `Question ${questionIndex + 1} of ${totalQuestions}`;
+            
+            // Update visual progress bar indicator
+            const progressPercent = totalQuestions > 0 ? ((questionIndex) / totalQuestions) * 100 : 0;
+            const progressBar = document.getElementById('quiz-progress-bar');
+            const progressText = document.getElementById('quiz-progress-text');
+            if (progressBar) {
+              progressBar.style.width = `${progressPercent}%`;
+            }
+            if (progressText) {
+              progressText.textContent = `${questionIndex} / ${totalQuestions} Completed`;
+            }
+
             document.getElementById('quiz-loading').classList.add('hidden');
             document.getElementById('quiz-form').classList.remove('hidden');
             document.getElementById('quiz-actions').classList.add('hidden');
@@ -764,6 +840,31 @@
             const optionCards = questionElem.querySelectorAll('.option-card');
             const radioChecked = questionElem.querySelector('input[type="radio"]:checked');
             const selectedOptionValue = radioChecked ? parseInt(radioChecked.value, 10) : null;
+
+            // Update correct streak tracker
+            const hudStreakContainer = document.getElementById('hud-streak-container');
+            const hudStreakCount = document.getElementById('hud-streak-count');
+            
+            if (selectedOptionValue !== null && selectedOptionValue === correctOption) {
+              currentSessionStreak++;
+            } else {
+              currentSessionStreak = 0;
+            }
+
+            if (hudStreakContainer && hudStreakCount) {
+              hudStreakCount.textContent = currentSessionStreak;
+              if (currentSessionStreak > 0) {
+                hudStreakContainer.classList.remove('hidden');
+                hudStreakContainer.classList.add('flex');
+                hudStreakContainer.style.transform = 'scale(1.1)';
+                setTimeout(() => {
+                  hudStreakContainer.style.transform = 'scale(1)';
+                }, 150);
+              } else {
+                hudStreakContainer.classList.add('hidden');
+                hudStreakContainer.classList.remove('flex');
+              }
+            }
             
             optionCards.forEach((card) => {
               const radio = card.querySelector('input[type="radio"]');
