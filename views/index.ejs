@@ -164,6 +164,19 @@
       </div>
     </div>
 
+    <!-- Cooperative Progress Scorecard Header (Hidden by default) -->
+    <div id="cooperative-scoreboard" class="hidden mb-6 flex flex-col gap-3 border border-emerald-500/20 bg-emerald-500/5 rounded-xl p-4 text-sm">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-850">
+        <span class="font-bold text-stone-300">👥 Team Co-op Study Room</span>
+        <span class="text-xs font-bold text-emerald-400 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/25">
+          Accuracy: <span id="coop-accuracy-val">100%</span>
+        </span>
+      </div>
+      <div id="coop-players-list" class="grid grid-cols-2 sm:grid-cols-4 gap-3 text-center">
+        <!-- populated dynamically -->
+      </div>
+    </div>
+
     <div id="multiplayer-announcement" class="hidden mb-6 text-center text-xs font-semibold text-amber-400 bg-amber-950/20 border border-amber-500/20 rounded-lg py-2 animate-pulse"></div>
 
     <!-- Main quiz card -->
@@ -722,7 +735,13 @@
         const isMultiplayer = window.localStorage.getItem('multiplayer') === 'true';
         if (isMultiplayer) {
           const socket = io();
-          document.getElementById('multiplayer-scoreboard').classList.remove('hidden');
+          const roomMode = window.localStorage.getItem('roomMode') || 'competitive';
+          
+          if (roomMode === 'cooperative') {
+            document.getElementById('cooperative-scoreboard').classList.remove('hidden');
+          } else {
+            document.getElementById('multiplayer-scoreboard').classList.remove('hidden');
+          }
           
           socket.emit('quizReady', { roomCode: window.localStorage.getItem('roomCode') });
 
@@ -840,7 +859,7 @@
             document.getElementById('multiplayer-announcement').classList.add('hidden');
           });
 
-          socket.on('revealAnswer', ({ correctOption, explanation }) => {
+          socket.on('revealAnswer', ({ correctOption, explanation, mode, groupAccuracy, playerAnswers }) => {
             clearInterval(timerInterval);
             const questionElem = document.querySelector(`#quiz-container > div`);
             if (!questionElem) return;
@@ -848,6 +867,18 @@
             const optionCards = questionElem.querySelectorAll('.option-card');
             const radioChecked = questionElem.querySelector('input[type="radio"]:checked');
             const selectedOptionValue = radioChecked ? parseInt(radioChecked.value, 10) : null;
+
+            if (mode === 'cooperative') {
+              const accuracyVal = document.getElementById('coop-accuracy-val');
+              if (accuracyVal) accuracyVal.textContent = groupAccuracy + '%';
+              
+              const banner = document.getElementById('multiplayer-announcement');
+              if (banner && playerAnswers) {
+                const summaryText = playerAnswers.map(pa => `${pa.name}: ${pa.correct ? '✅' : '❌'}`).join(' | ');
+                banner.textContent = `📋 Round: ${summaryText}`;
+                banner.classList.remove('hidden');
+              }
+            }
 
             // Update correct streak tracker
             const hudStreakContainer = document.getElementById('hud-streak-container');
@@ -906,11 +937,28 @@
           });
 
           socket.on('scoreboardUpdate', ({ players }) => {
-            if (players.length >= 2) {
-              document.getElementById('p1-name').textContent = players[0].name;
-              document.getElementById('p1-score').textContent = players[0].score;
-              document.getElementById('p2-name').textContent = players[1].name;
-              document.getElementById('p2-score').textContent = players[1].score;
+            const roomMode = window.localStorage.getItem('roomMode') || 'competitive';
+            if (roomMode === 'cooperative') {
+              const coopList = document.getElementById('coop-players-list');
+              if (coopList) {
+                coopList.innerHTML = '';
+                players.forEach(p => {
+                  const div = document.createElement('div');
+                  div.className = "flex flex-col items-center bg-stone-900 border border-stone-850 p-2 rounded-lg";
+                  div.innerHTML = `
+                    <span class="text-xs font-bold text-stone-300 truncate w-full">${p.name}</span>
+                    <span class="text-sm font-extrabold text-emerald-400 mt-1">${p.score} pts</span>
+                  `;
+                  coopList.appendChild(div);
+                });
+              }
+            } else {
+              if (players.length >= 2) {
+                document.getElementById('p1-name').textContent = players[0].name;
+                document.getElementById('p1-score').textContent = players[0].score;
+                document.getElementById('p2-name').textContent = players[1].name;
+                document.getElementById('p2-score').textContent = players[1].score;
+              }
             }
           });
 
@@ -926,16 +974,22 @@
             banner.classList.remove('hidden');
           });
 
-          socket.on('quizEnded', ({ players }) => {
+          socket.on('quizEnded', ({ mode, groupAccuracy, players }) => {
             const myName = window.localStorage.getItem('userName');
             const me = players.find(p => p.name === myName);
-            const opponent = players.find(p => p.name !== myName);
             const score = me ? me.score : 0;
             const total = totalQuestions || 5;
             
-            const opponentDetails = opponent ? `&opponentName=${opponent.name}&opponentScore=${opponent.score}` : '';
+            const roomMode = window.localStorage.getItem('roomMode') || 'competitive';
             window.localStorage.removeItem('multiplayer');
-            window.location.href = `/result?score=${score}&total=${total}&sectionId=${window.localStorage.getItem('sectionId')}${opponentDetails}`;
+            
+            if (roomMode === 'cooperative') {
+              window.location.href = `/result?score=${score}&total=${total}&sectionId=${window.localStorage.getItem('sectionId')}&coop=true&groupAccuracy=${groupAccuracy || 100}`;
+            } else {
+              const opponent = players.find(p => p.name !== myName);
+              const opponentDetails = opponent ? `&opponentName=${opponent.name}&opponentScore=${opponent.score}` : '';
+              window.location.href = `/result?score=${score}&total=${total}&sectionId=${window.localStorage.getItem('sectionId')}${opponentDetails}`;
+            }
           });
 
           socket.on('playerDisconnected', (msg) => {

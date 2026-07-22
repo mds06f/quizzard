@@ -281,6 +281,14 @@
 
         <!-- Multiplayer Lobby Panel (Hidden initially) -->
         <div id="multiplayer-lobby" class="hidden border border-stone-800 bg-stone-950/20 rounded-xl p-4 space-y-4">
+          <!-- Room Mode Toggle -->
+          <div class="flex items-center justify-between pb-3 border-b border-stone-850">
+            <span class="text-xs font-bold text-stone-300 tracking-wide uppercase">Multiplayer Mode</span>
+            <div class="flex bg-stone-900 border border-stone-800 rounded-lg p-0.5">
+              <button type="button" id="btn-multi-mode-competitive" class="px-3 py-1 text-[10px] font-bold rounded bg-amber-600 text-white transition cursor-pointer" data-mode="competitive">1v1 Duel</button>
+              <button type="button" id="btn-multi-mode-cooperative" class="px-3 py-1 text-[10px] font-bold rounded text-stone-400 hover:text-stone-200 transition cursor-pointer" data-mode="cooperative">Co-op Study</button>
+            </div>
+          </div>
           <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div class="space-y-2 text-center sm:text-left border-b sm:border-b-0 sm:border-r border-stone-800 pb-4 sm:pb-0 sm:pr-4">
               <p class="text-[10px] font-semibold text-stone-400 tracking-wider">HOST A GAME</p>
@@ -1099,12 +1107,13 @@
         document.getElementById('btn-host-room').textContent = 'Room Created';
       });
 
-      socket.on('roomReady', ({ roomCode, sectionId, difficulty, count }) => {
+      socket.on('roomReady', ({ roomCode, sectionId, difficulty, count, mode }) => {
         window.localStorage.setItem('roomCode', roomCode);
         window.localStorage.setItem('sectionId', sectionId);
         window.localStorage.setItem('difficulty', difficulty);
         window.localStorage.setItem('questionCount', count);
         window.localStorage.setItem('multiplayer', 'true');
+        window.localStorage.setItem('roomMode', mode || 'competitive');
         
         const userName = userNameInput.value.trim();
         window.localStorage.setItem('userName', userName);
@@ -1166,7 +1175,8 @@
         }
 
         const s = initSocket();
-        s.emit('createRoom', { userName, sectionId, difficulty, count });
+        const mode = window.multiplayerMode || 'competitive';
+        s.emit('createRoom', { userName, sectionId, difficulty, count, mode });
       });
     }
 
@@ -1294,6 +1304,23 @@
 
       // Initialize theme toggler
       initThemeToggle();
+
+      // Multiplayer Mode toggler
+      window.multiplayerMode = 'competitive';
+      const btnComp = document.getElementById('btn-multi-mode-competitive');
+      const btnCoop = document.getElementById('btn-multi-mode-cooperative');
+      if (btnComp && btnCoop) {
+        btnComp.addEventListener('click', () => {
+          window.multiplayerMode = 'competitive';
+          btnComp.className = "px-3 py-1 text-[10px] font-bold rounded bg-amber-600 text-white transition cursor-pointer";
+          btnCoop.className = "px-3 py-1 text-[10px] font-bold rounded text-stone-400 hover:text-stone-200 transition cursor-pointer";
+        });
+        btnCoop.addEventListener('click', () => {
+          window.multiplayerMode = 'cooperative';
+          btnCoop.className = "px-3 py-1 text-[10px] font-bold rounded bg-amber-600 text-white transition cursor-pointer";
+          btnComp.className = "px-3 py-1 text-[10px] font-bold rounded text-stone-400 hover:text-stone-200 transition cursor-pointer";
+        });
+      }
 
       // Initialize settings waveform select
       const settingsWaveform = document.getElementById('settings-waveform');

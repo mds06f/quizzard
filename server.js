@@ -38,10 +38,19 @@ app.get('/quiz', (req, res) => {
 });
 
 app.get('/result', (req, res) => {
-  const { score, total, opponentName, opponentScore } = req.query;
+  const { score, total, opponentName, opponentScore, coop, groupAccuracy } = req.query;
   let message = 'Better luck next time!';
   
-  if (opponentName) {
+  if (coop === 'true') {
+    const accuracy = parseInt(groupAccuracy, 10) || 100;
+    if (accuracy >= 80) {
+      message = `🌟 Fantastic Teamwork! Group Accuracy: ${accuracy}%`;
+    } else if (accuracy >= 50) {
+      message = `👍 Good effort! Group Accuracy: ${accuracy}%`;
+    } else {
+      message = `📚 Keep practicing together! Group Accuracy: ${accuracy}%`;
+    }
+  } else if (opponentName) {
     const myScore = parseInt(score, 10);
     const oppScore = parseInt(opponentScore, 10);
     if (myScore > oppScore) {
@@ -60,7 +69,7 @@ app.get('/result', (req, res) => {
       message = 'Excellent!';
     }
   }
-  res.render('result', { score, total, message, opponentName, opponentScore });
+  res.render('result', { score, total, message, opponentName, opponentScore, coop, groupAccuracy });
 });
 
 app.get('/leaderboard/:sectionId', async (req, res) => {
@@ -82,13 +91,14 @@ const rooms = {};
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
 
-  socket.on('createRoom', ({ userName, sectionId, difficulty, count }) => {
+  socket.on('createRoom', ({ userName, sectionId, difficulty, count, mode }) => {
     const roomCode = Math.floor(100000 + Math.random() * 900000).toString();
     rooms[roomCode] = {
       sectionId,
       difficulty,
       count: parseInt(count, 10) || 5,
-      players: [{ name: userName, socketId: socket.id, score: 0 }],
+      mode: mode || 'competitive',
+      players: [{ name: userName, socketId: socket.id, score: 0, answersCount: 0, correctCount: 0 }],
       currentQuestionIndex: 0,
       questions: [],
       answersReceived: 0,
@@ -104,12 +114,13 @@ io.on('connection', (socket) => {
       socket.emit('errorMessage', 'Room not found.');
       return;
     }
-    if (room.players.length >= 2) {
+    const maxPlayers = room.mode === 'cooperative' ? 4 : 2;
+    if (room.players.length >= maxPlayers) {
       socket.emit('errorMessage', 'Room is full.');
       return;
     }
     
-    room.players.push({ name: userName, socketId: socket.id, score: 0 });
+    room.players.push({ name: userName, socketId: socket.id, score: 0, answersCount: 0, correctCount: 0 });
     socket.join(roomCode);
     
     io.to(roomCode).emit('roomReady', {
@@ -117,6 +128,7 @@ io.on('connection', (socket) => {
       sectionId: room.sectionId,
       difficulty: room.difficulty,
       count: room.count,
+      mode: room.mode,
       players: room.players.map(p => ({ name: p.name, score: p.score }))
     });
   });
@@ -167,18 +179,44 @@ io.on('connection', (socket) => {
     const player = room.players.find(p => p.socketId === socket.id);
     if (!player) return;
 
-    if (isCorrect && !room.firstCorrectSocketId) {
-      room.firstCorrectSocketId = socket.id;
-      player.score += 1;
-      io.to(roomCode).emit('firstCorrect', { winnerName: player.name });
+    if (room.mode === 'cooperative') {
+      player.answersCount = (player.answersCount || 0) + 1;
+      if (isCorrect) {
+        player.correctCount = (player.correctCount || 0) + 1;
+        player.score += 1;
+      }
+      player.lastAnswerCorrect = isCorrect;
+    } else {
+      if (isCorrect && !room.firstCorrectSocketId) {
+        room.firstCorrectSocketId = socket.id;
+        player.score += 1;
+        io.to(roomCode).emit('firstCorrect', { winnerName: player.name });
+      }
     }
 
     room.answersReceived += 1;
 
     if (room.answersReceived >= room.players.length) {
+      let groupAccuracy = 0;
+      let totalAnswers = 0;
+      let totalCorrect = 0;
+      let playerAnswers = [];
+      
+      if (room.mode === 'cooperative') {
+        room.players.forEach(p => {
+          totalAnswers += (p.answersCount || 0);
+          totalCorrect += (p.correctCount || 0);
+          playerAnswers.push({ name: p.name, correct: p.lastAnswerCorrect });
+        });
+        groupAccuracy = totalAnswers > 0 ? Math.round((totalCorrect / totalAnswers) * 100) : 0;
+      }
+
       io.to(roomCode).emit('revealAnswer', {
         correctOption: question.correct_option,
-        explanation: question.explanation
+        explanation: question.explanation,
+        mode: room.mode,
+        groupAccuracy,
+        playerAnswers
       });
 
       io.to(roomCode).emit('scoreboardUpdate', { players: room.players.map(p => ({ name: p.name, score: p.score })) });
@@ -196,6 +234,8 @@ io.on('connection', (socket) => {
           });
         } else {
           io.to(roomCode).emit('quizEnded', {
+            mode: room.mode,
+            groupAccuracy: room.mode === 'cooperative' ? groupAccuracy : null,
             players: room.players.map(p => ({ name: p.name, score: p.score }))
           });
           delete rooms[roomCode];
