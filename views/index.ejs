@@ -189,6 +189,17 @@
           </div>
         </div>
 
+        <!-- Visual Progress Bar Indicator -->
+        <div id="quiz-progress-container" class="space-y-1.5 mb-6">
+          <div class="flex justify-between items-center text-[10px] font-bold text-stone-500 uppercase tracking-wider">
+            <span>Progress Indicator</span>
+            <span id="quiz-progress-text">0 / 0 Completed</span>
+          </div>
+          <div class="h-1.5 w-full bg-stone-900 rounded-full overflow-hidden border border-stone-800">
+            <div id="quiz-progress-bar" class="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300" style="width: 0%;"></div>
+          </div>
+        </div>
+
         <div id="quiz-container" class="space-y-8"></div>
 
         <div id="quiz-actions" class="pt-4 border-t border-stone-850 flex flex-col sm:flex-row gap-4 justify-between items-center">
@@ -296,6 +307,17 @@
       function startQuestion(index) {
         currentQuestionIndex = index;
         
+        // Update visual progress bar indicator
+        const progressPercent = totalQuestions > 0 ? ((index) / totalQuestions) * 100 : 0;
+        const progressBar = document.getElementById('quiz-progress-bar');
+        const progressText = document.getElementById('quiz-progress-text');
+        if (progressBar) {
+          progressBar.style.width = `${progressPercent}%`;
+        }
+        if (progressText) {
+          progressText.textContent = `${index} / ${totalQuestions} Completed`;
+        }
+
         // Show current question, hide others
         const questionElems = document.querySelectorAll('#quiz-container > div');
         questionElems.forEach((elem, idx) => {
@@ -748,6 +770,18 @@
             });
 
             document.getElementById('question-counter').textContent = `Question ${questionIndex + 1} of ${totalQuestions}`;
+            
+            // Update visual progress bar indicator
+            const progressPercent = totalQuestions > 0 ? ((questionIndex) / totalQuestions) * 100 : 0;
+            const progressBar = document.getElementById('quiz-progress-bar');
+            const progressText = document.getElementById('quiz-progress-text');
+            if (progressBar) {
+              progressBar.style.width = `${progressPercent}%`;
+            }
+            if (progressText) {
+              progressText.textContent = `${questionIndex} / ${totalQuestions} Completed`;
+            }
+
             document.getElementById('quiz-loading').classList.add('hidden');
             document.getElementById('quiz-form').classList.remove('hidden');
             document.getElementById('quiz-actions').classList.add('hidden');
