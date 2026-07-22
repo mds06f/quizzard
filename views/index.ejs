@@ -598,9 +598,145 @@
         }
       });
 
+      let remediationTriggered = false;
+
       document.getElementById('quiz-form').addEventListener('submit', async function (event) {
         event.preventDefault();
         
+        // Intercept for Adaptive Remediation
+        if (!remediationTriggered && window.localStorage.getItem('multiplayer') !== 'true' && window.localStorage.getItem('challengeMode') !== 'true') {
+          const correctCount = Object.keys(answersSubmitted).filter(key => {
+            const qId = parseInt(key.replace('question-', ''), 10);
+            const q = questionsData.find(item => item.id === qId);
+            return q && parseInt(answersSubmitted[key], 10) === q.correct_option;
+          }).length;
+          
+          const accuracyRate = questionsData.length > 0 ? (correctCount / questionsData.length) : 1;
+          
+          if (accuracyRate < 0.5) {
+            remediationTriggered = true;
+            const submitBtn = document.getElementById('action-btn');
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = `<span class="animate-pulse">Loading Remediation...</span>`;
+            
+            const wrongQuestions = questionsData.filter(q => {
+              const ans = answersSubmitted[`question-${q.id}`];
+              return parseInt(ans, 10) !== q.correct_option;
+            });
+            
+            try {
+              const sectionId = window.localStorage.getItem('sectionId');
+              const response = await fetch('/api/quiz/remediation', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ sectionId, wrongQuestions })
+              });
+              
+              const remQ = await response.json();
+              if (remQ && remQ.question) {
+                remQ.id = 999999;
+                questionsData.push(remQ);
+                totalQuestions = questionsData.length;
+                answersSubmitted[`question-${remQ.id}`] = null;
+                
+                const index = questionsData.length - 1;
+                const questionElem = document.createElement('div');
+                questionElem.classList.add('p-6', 'border', 'border-stone-800', 'rounded-xl', 'bg-stone-900/30', 'space-y-4', 'hidden');
+                questionElem.setAttribute('data-question-index', index);
+                
+                const optionsList = [
+                  { text: remQ.option1, val: 1 },
+                  { text: remQ.option2, val: 2 },
+                  { text: remQ.option3, val: 3 },
+                  { text: remQ.option4, val: 4 }
+                ];
+                
+                let optionsHtml = '';
+                optionsList.forEach(opt => {
+                  optionsHtml += `
+                    <label class="option-card block cursor-pointer select-none">
+                      <input type="radio" name="remediation-radio" value="${opt.val}" class="hidden">
+                      <div class="option-label p-3.5 border border-stone-800 bg-stone-950/40 text-stone-400 hover:border-stone-700 hover:text-stone-200 rounded-lg text-sm transition flex items-center">
+                        <span class="font-semibold mr-2">${String.fromCharCode(64 + opt.val)}.</span>
+                        <span>${opt.text}</span>
+                      </div>
+                    </label>
+                  `;
+                });
+                
+                questionElem.innerHTML = `
+                  <div class="p-3 bg-amber-500/10 border border-amber-500/20 rounded-xl mb-4 text-center">
+                    <p class="text-xs font-bold text-amber-400">💡 ADAPTIVE REMEDIATION BONUS QUESTION</p>
+                    <p class="text-[10px] text-stone-400 mt-0.5">Let's review the concepts you missed to boost your score!</p>
+                  </div>
+                  <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-start gap-3">
+                      <span class="bg-amber-500 text-stone-950 font-bold text-xs rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5">R</span>
+                      <p class="text-lg font-medium text-stone-100">${remQ.question}</p>
+                    </div>
+                  </div>
+                  <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 ml-8">
+                    ${optionsHtml}
+                  </div>
+                `;
+                
+                document.getElementById('quiz-container').appendChild(questionElem);
+                
+                questionElem.querySelectorAll('input[type="radio"]').forEach(radio => {
+                  radio.addEventListener('change', (e) => {
+                    if (localStorage.getItem('soundEnabled') !== 'false') {
+                      playClickSound();
+                    }
+                    triggerHapticFeedback();
+                    const val = e.target.value;
+                    answersSubmitted[`question-${remQ.id}`] = val;
+                    
+                    questionElem.querySelectorAll('.option-card').forEach(card => {
+                      const r = card.querySelector('input[type="radio"]');
+                      const labelDiv = card.querySelector('.option-label');
+                      const optVal = parseInt(r.value, 10);
+                      
+                      labelDiv.classList.remove('hover:border-stone-700', 'hover:text-stone-200');
+                      card.classList.remove('cursor-pointer');
+                      card.classList.add('cursor-not-allowed');
+                      r.disabled = true;
+                      
+                      if (optVal === remQ.correct_option) {
+                        labelDiv.classList.remove('border-stone-800', 'bg-stone-950/40', 'text-stone-400');
+                        labelDiv.classList.add('bg-emerald-950/40', 'border-emerald-500/60', 'text-emerald-300');
+                        const check = document.createElement('span');
+                        check.textContent = '✅';
+                        check.className = 'ml-2 text-emerald-400 font-bold';
+                        labelDiv.appendChild(check);
+                      } else if (parseInt(val) === optVal) {
+                        labelDiv.classList.remove('border-stone-800', 'bg-stone-950/40', 'text-stone-400');
+                        labelDiv.classList.add('bg-red-950/40', 'border-red-500/60', 'text-red-300');
+                        const cross = document.createElement('span');
+                        cross.textContent = '❌';
+                        cross.className = 'ml-2 text-red-400 font-bold';
+                        labelDiv.appendChild(cross);
+                      }
+                    });
+                    
+                    const expDiv = document.createElement('div');
+                    expDiv.className = 'mt-4 p-4 bg-amber-950/20 border-l-2 border-amber-500/50 rounded-lg text-sm text-amber-200 animate-fade-in';
+                    expDiv.innerHTML = `<strong>Explanation:</strong> ${remQ.explanation}`;
+                    questionElem.appendChild(expDiv);
+                    
+                    updateBottomButtonState(true);
+                  });
+                });
+                
+                currentQuestionIndex = index;
+                startQuestion(index);
+                return;
+              }
+            } catch (err) {
+              console.error("Error fetching remediation question:", err);
+            }
+          }
+        }
+
         const data = { ...answersSubmitted };
 
         // Show loader on submit button

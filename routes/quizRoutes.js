@@ -290,4 +290,70 @@ router.get('/user/sync/restore/:token', async (req, res) => {
   }
 });
 
+// POST generate remediation question via Gemini API
+router.post('/remediation', async (req, res) => {
+  const { sectionId, wrongQuestions } = req.body;
+  if (!wrongQuestions || !Array.isArray(wrongQuestions) || wrongQuestions.length === 0) {
+    return res.status(400).json({ error: 'At least one wrong question is required.' });
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (!apiKey) {
+    return res.status(400).json({
+      error: 'Gemini API key is not configured. Please set the GEMINI_API_KEY environment variable in your .env file.'
+    });
+  }
+
+  try {
+    const ai = new GoogleGenAI({ apiKey });
+    
+    const wrongQuestionsText = wrongQuestions.map((q, idx) => 
+      `${idx + 1}. Question: "${q.question}"\n- Options: 1: ${q.option1}, 2: ${q.option2}, 3: ${q.option3}, 4: ${q.option4}\n- Correct option: ${q.correct_option}\n- Explanation: ${q.explanation || 'None'}`
+    ).join('\n\n');
+
+    const prompt = `You are a helpful learning assistant. The user is struggling with the topic.
+They got the following questions wrong in their quiz:
+${wrongQuestionsText}
+
+Generate a custom remediation question that tests the same core concepts but with detailed explanation context to help them learn from their mistake.
+Return the output strictly in the following JSON format:
+{
+  "question": "question text",
+  "option1": "option 1 text",
+  "option2": "option 2 text",
+  "option3": "option 3 text",
+  "option4": "option 4 text",
+  "correct_option": 1,
+  "explanation": "detailed explanation helping the student learn the concept"
+}`;
+
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: prompt,
+      config: {
+        responseMimeType: 'application/json',
+        responseSchema: {
+          type: 'OBJECT',
+          properties: {
+            question: { type: 'STRING' },
+            option1: { type: 'STRING' },
+            option2: { type: 'STRING' },
+            option3: { type: 'STRING' },
+            option4: { type: 'STRING' },
+            correct_option: { type: 'INTEGER' },
+            explanation: { type: 'STRING' }
+          },
+          required: ['question', 'option1', 'option2', 'option3', 'option4', 'correct_option', 'explanation']
+        }
+      }
+    });
+
+    const remediationQuestion = JSON.parse(response.text);
+    res.json(remediationQuestion);
+  } catch (err) {
+    console.error('Error generating remediation question:', err);
+    res.status(500).json({ error: 'Failed to generate remediation question: ' + err.message });
+  }
+});
+
 module.exports = router;
