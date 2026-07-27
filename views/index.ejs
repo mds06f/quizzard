@@ -900,6 +900,9 @@
           });
 
           const result = await response.json();
+          if (result.incorrectIds && Array.isArray(result.incorrectIds)) {
+            window.localStorage.setItem('lastIncorrectQuestionIds', JSON.stringify(result.incorrectIds));
+          }
           const userName = window.localStorage.getItem('userName');
           const sectionId = window.localStorage.getItem('sectionId');
 

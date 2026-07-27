@@ -84,22 +84,25 @@ router.post('/submit', async (req, res) => {
   const questionIds = Object.keys(answers).map(key => key.split('-')[1]);
 
   if (questionIds.length === 0) {
-    return res.json({ score: 0, total: 0 });
+    return res.json({ score: 0, total: 0, incorrectIds: [] });
   }
 
   try {
     const selectedQuestions = await db.getQuestionsByIds(questionIds);
 
     let score = 0;
+    const incorrectIds = [];
     selectedQuestions.forEach(question => {
       const userAnswer = answers[`question-${question.id}`];
       if (parseInt(userAnswer) === question.correct_option) {
         score += 1;
+      } else {
+        incorrectIds.push(question.id);
       }
     });
 
     const totalQuestions = selectedQuestions.length;
-    res.json({ score: score, total: totalQuestions });
+    res.json({ score: score, total: totalQuestions, incorrectIds: incorrectIds });
   } catch (err) {
     console.error('Error processing submission:', err);
     res.status(500).json({ error: 'Database error' });
