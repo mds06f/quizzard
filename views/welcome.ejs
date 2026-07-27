@@ -326,6 +326,10 @@
               <option value="20" class="bg-stone-950 text-stone-100">20 Questions</option>
             </select>
           </div>
+          <div id="quiz-est-time" class="mt-2 text-xs font-medium text-amber-300/90 flex items-center gap-1.5 px-1">
+            <span>⏱️ Est. Completion Time:</span>
+            <span id="est-time-val" class="font-bold text-amber-400">~1 min</span>
+          </div>
         </div>
 
         <button type="submit" id="btn-start-quiz" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 text-white font-semibold p-4 rounded-lg shadow-lg hover:from-amber-500 hover:to-orange-500 hover:shadow-amber-500/10 active:scale-[0.99] transition duration-300 flex items-center justify-center gap-2 group">
@@ -794,6 +798,25 @@
         charCount.classList.add('text-stone-500');
       }
     });
+
+    // Estimated completion time logic
+    const numQuestionsSelect = document.getElementById('num-questions-select');
+    const estTimeVal = document.getElementById('est-time-val');
+    function updateEstimatedTime() {
+      if (!numQuestionsSelect || !estTimeVal) return;
+      const count = parseInt(numQuestionsSelect.value, 10) || 5;
+      const totalSeconds = count * 15;
+      if (totalSeconds < 60) {
+        estTimeVal.textContent = `~${totalSeconds} secs`;
+      } else {
+        const mins = Math.max(1, Math.round(totalSeconds / 60));
+        estTimeVal.textContent = `~${mins} min${mins > 1 ? 's' : ''}`;
+      }
+    }
+    if (numQuestionsSelect) {
+      numQuestionsSelect.addEventListener('change', updateEstimatedTime);
+      updateEstimatedTime();
+    }
 
     let allSectionsList = [];
     let selectedActiveTag = 'All';
