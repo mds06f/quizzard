@@ -752,6 +752,33 @@
 
       initThemeToggle();
       playVictoryChime();
+
+      function initScrollToTop() {
+        const scrollTopBtn = document.createElement('button');
+        scrollTopBtn.id = 'scroll-to-top-btn';
+        scrollTopBtn.type = 'button';
+        scrollTopBtn.className = 'fixed bottom-6 right-6 bg-amber-600 hover:bg-amber-500 text-white p-3 rounded-full shadow-xl border border-amber-400/30 transition-all duration-300 opacity-0 pointer-events-none z-50 flex items-center justify-center w-11 h-11 active:scale-95 text-lg';
+        scrollTopBtn.title = 'Back to top';
+        scrollTopBtn.setAttribute('aria-label', 'Scroll to top');
+        scrollTopBtn.innerHTML = '⬆️';
+        document.body.appendChild(scrollTopBtn);
+
+        window.addEventListener('scroll', () => {
+          if (window.scrollY > 300) {
+            scrollTopBtn.classList.remove('opacity-0', 'pointer-events-none');
+            scrollTopBtn.classList.add('opacity-100', 'pointer-events-auto');
+          } else {
+            scrollTopBtn.classList.remove('opacity-100', 'pointer-events-auto');
+            scrollTopBtn.classList.add('opacity-0', 'pointer-events-none');
+          }
+        });
+
+        scrollTopBtn.addEventListener('click', () => {
+          window.scrollTo({ top: 0, behavior: 'smooth' });
+        });
+      }
+
+      initScrollToTop();
     });
   </script>
 </body>
