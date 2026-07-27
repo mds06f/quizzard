@@ -249,6 +249,12 @@
           class="bg-stone-900/80 border border-stone-800 text-stone-300 hover:text-white font-semibold p-3.5 rounded-lg transition duration-300 hover:border-amber-500/50 active:scale-[0.99] flex items-center justify-center gap-2">
           🖨️ Print / Save PDF
         </button>
+        <% if (score < total) { %>
+          <button id="btn-retry-missed" onclick="retryMissedQuestions()" type="button"
+            class="sm:col-span-2 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-bold p-3.5 rounded-lg shadow-lg active:scale-[0.99] transition duration-300 flex items-center justify-center gap-2 cursor-pointer">
+            🎯 Retry Missed Questions (<%= total - score %>)
+          </button>
+        <% } %>
         <a href="/"
           class="sm:col-span-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-semibold p-3.5 rounded-lg shadow-lg active:scale-[0.99] transition duration-300 flex items-center justify-center gap-2">
           Take Another Quiz ➡️
@@ -807,6 +813,20 @@
 
       initScrollToTop();
     });
+
+    function retryMissedQuestions() {
+      try {
+        const incorrectIds = JSON.parse(localStorage.getItem('lastIncorrectQuestionIds') || '[]');
+        if (incorrectIds.length > 0) {
+          localStorage.setItem('activeReviewQuestionIds', JSON.stringify(incorrectIds));
+          window.location.href = '/quiz/review-attempt';
+        } else {
+          alert('No missed question records found to retry.');
+        }
+      } catch(e) {
+        console.error("Error launching retry missed questions:", e);
+      }
+    }
   </script>
 </body>
 

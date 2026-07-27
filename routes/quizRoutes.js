@@ -84,22 +84,25 @@ router.post('/submit', async (req, res) => {
   const questionIds = Object.keys(answers).map(key => key.split('-')[1]);
 
   if (questionIds.length === 0) {
-    return res.json({ score: 0, total: 0 });
+    return res.json({ score: 0, total: 0, incorrectIds: [] });
   }
 
   try {
     const selectedQuestions = await db.getQuestionsByIds(questionIds);
 
     let score = 0;
+    const incorrectIds = [];
     selectedQuestions.forEach(question => {
       const userAnswer = answers[`question-${question.id}`];
       if (parseInt(userAnswer) === question.correct_option) {
         score += 1;
+      } else {
+        incorrectIds.push(question.id);
       }
     });
 
     const totalQuestions = selectedQuestions.length;
-    res.json({ score: score, total: totalQuestions });
+    res.json({ score: score, total: totalQuestions, incorrectIds: incorrectIds });
   } catch (err) {
     console.error('Error processing submission:', err);
     res.status(500).json({ error: 'Database error' });
@@ -141,6 +144,31 @@ router.post('/questions-by-ids', async (req, res) => {
     res.json(filtered);
   } catch (err) {
     console.error('Error fetching questions by IDs:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
+router.get('/questions/custom-mix', async (req, res) => {
+  const categories = (req.query.categories || '').split(',').map(c => c.trim()).filter(Boolean);
+  const count = parseInt(req.query.count, 10) || 10;
+  
+  try {
+    const allQuestions = (await db.getAllQuestions()) || [];
+    const catSet = new Set(categories.map(Number));
+    
+    let filtered = allQuestions.filter(q => catSet.has(Number(q.section_id)));
+    if (filtered.length === 0) {
+      filtered = [...allQuestions];
+    }
+
+    for (let i = filtered.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [filtered[i], filtered[j]] = [filtered[j], filtered[i]];
+    }
+
+    res.json(filtered.slice(0, count));
+  } catch (err) {
+    console.error('Error fetching custom mix questions:', err);
     res.status(500).json({ error: 'Database error' });
   }
 });

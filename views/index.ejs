@@ -153,6 +153,11 @@
           class="bg-stone-900/60 border border-stone-850 text-stone-400 hover:text-white rounded-lg px-3 py-2 hover:border-amber-500/40 transition flex items-center gap-1.5 text-xs font-bold" title="Voice Commands mode">
           🎙️ <span id="voice-status-label" class="hidden sm:inline text-stone-500">Off</span>
         </button>
+
+        <button id="pause-quiz-btn" type="button" onclick="togglePauseQuiz()"
+          class="bg-stone-900/60 border border-stone-850 text-stone-400 hover:text-white rounded-lg px-3 py-2 hover:border-amber-500/40 transition flex items-center gap-1.5 text-xs font-bold" title="Pause Quiz">
+          ⏸️ <span class="hidden sm:inline">Pause</span>
+        </button>
       </div>
     </div>
 
@@ -183,6 +188,42 @@
     </div>
 
     <div id="multiplayer-announcement" class="hidden mb-6 text-center text-xs font-semibold text-amber-400 bg-amber-950/20 border border-amber-500/20 rounded-lg py-2 animate-pulse"></div>
+
+    <!-- Quiz Pause Modal Overlay -->
+    <div id="pause-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+      <div class="glass-card rounded-2xl p-8 max-w-md w-full text-center space-y-5 border border-stone-800 shadow-2xl">
+        <div class="text-5xl animate-bounce">⏸️</div>
+        <h2 class="text-2xl font-extrabold text-stone-100">Quiz Paused</h2>
+        <p class="text-xs text-stone-400">Take a break! Your timer is paused and your current progress is autosaved.</p>
+        <button onclick="togglePauseQuiz()" type="button"
+          class="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-semibold py-3 px-6 rounded-lg shadow-lg active:scale-95 transition cursor-pointer">
+          ▶️ Resume Quiz
+        </button>
+      </div>
+    </div>
+
+    <!-- Pre-submission Answer Review Modal Overlay -->
+    <div id="pre-submit-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+      <div class="glass-card rounded-2xl p-6 sm:p-8 max-w-lg w-full text-center space-y-5 border border-stone-800 shadow-2xl">
+        <h3 class="text-xl font-bold text-stone-100 flex items-center justify-center gap-2">
+          <span>📋</span> Answer Review & Progress Grid
+        </h3>
+        <p class="text-xs text-stone-400">Click any question badge to jump directly back to that question card.</p>
+        
+        <div id="pre-submit-grid" class="grid grid-cols-4 sm:grid-cols-5 gap-2.5 max-h-60 overflow-y-auto p-3 border border-stone-800 rounded-xl bg-stone-950/40">
+          <!-- Populated dynamically -->
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-3 pt-2">
+          <button type="button" onclick="closePreSubmitModal()" class="w-full bg-stone-850 hover:bg-stone-800 text-stone-300 font-semibold py-3 px-4 rounded-lg border border-stone-750 transition text-xs cursor-pointer">
+            ⬅️ Back to Quiz
+          </button>
+          <button type="button" onclick="confirmFinalSubmission()" class="w-full bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold py-3 px-4 rounded-lg shadow-lg active:scale-95 transition text-xs cursor-pointer">
+            Confirm & Submit 🎉
+          </button>
+        </div>
+      </div>
+    </div>
 
     <!-- Main quiz card -->
     <div class="glass-card rounded-2xl shadow-2xl p-6 sm:p-8">
@@ -393,6 +434,7 @@
 
         // Start countdown
         timerInterval = setInterval(() => {
+          if (isQuizPaused) return;
           timeLeft -= 0.1;
           if (timeLeft <= 0) {
             timeLeft = 0;
@@ -401,6 +443,71 @@
           }
           updateTimerUI();
         }, 100);
+
+        autosaveQuizState();
+      }
+
+      let isQuizPaused = false;
+      function togglePauseQuiz() {
+        isQuizPaused = !isQuizPaused;
+        const pauseModal = document.getElementById('pause-modal');
+        if (pauseModal) {
+          pauseModal.classList.toggle('hidden', !isQuizPaused);
+        }
+      }
+
+      function autosaveQuizState() {
+        try {
+          const state = {
+            index: currentQuestionIndex,
+            streak: currentSessionStreak,
+            answers: answersSubmitted,
+            timestamp: Date.now()
+          };
+          sessionStorage.setItem('active_quiz_autosave', JSON.stringify(state));
+        } catch(e) {}
+      }
+
+      function openPreSubmitModal() {
+        const grid = document.getElementById('pre-submit-grid');
+        if (!grid) return;
+        grid.innerHTML = '';
+
+        const bookmarkedIds = new Set((JSON.parse(localStorage.getItem('bookmarkedQuestions') || '[]')).map(q => q.id));
+
+        questionsData.forEach((q, idx) => {
+          const isAnswered = answersSubmitted[`question-${q.id}`] !== null && answersSubmitted[`question-${q.id}`] !== undefined;
+          const isBookmarked = bookmarkedIds.has(q.id);
+
+          const badge = document.createElement('button');
+          badge.type = 'button';
+          badge.className = `p-3 rounded-lg font-bold text-xs border transition flex flex-col items-center justify-center gap-1 cursor-pointer ${
+            isBookmarked 
+              ? 'bg-amber-500/20 border-amber-500/50 text-amber-300'
+              : isAnswered 
+              ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-300' 
+              : 'bg-stone-900 border-stone-800 text-stone-500'
+          }`;
+          badge.innerHTML = `<span>Q${idx + 1}</span><span class="text-[9px]">${isBookmarked ? '⭐' : isAnswered ? '✅' : '⚪'}</span>`;
+          badge.onclick = () => {
+            closePreSubmitModal();
+            startQuestion(idx);
+          };
+          grid.appendChild(badge);
+        });
+
+        document.getElementById('pre-submit-modal').classList.remove('hidden');
+      }
+
+      function closePreSubmitModal() {
+        document.getElementById('pre-submit-modal').classList.add('hidden');
+      }
+
+      let isFinalSubmitConfirmed = false;
+      function confirmFinalSubmission() {
+        isFinalSubmitConfirmed = true;
+        closePreSubmitModal();
+        document.getElementById('quiz-form').requestSubmit();
       }
 
       function lockQuestion(questionIndex, selectedOptionValue) {
@@ -521,6 +628,11 @@
             headers: { 'Content-Type': 'application/json' }
           });
           questionsData = await response.json();
+        } else if (sectionId === 'custom-mix') {
+          const count = window.localStorage.getItem('questionCount') || '5';
+          const cats = window.localStorage.getItem('customMixCategories') || '';
+          const response = await fetch(`/api/quiz/questions/custom-mix?categories=${cats}&count=${count}`);
+          questionsData = await response.json();
         } else {
           const count = window.localStorage.getItem('questionCount') || '5';
           const response = await fetch(`/api/quiz/questions/${sectionId}/${difficulty}?count=${count}`);
@@ -638,6 +750,11 @@
 
       document.getElementById('quiz-form').addEventListener('submit', async function (event) {
         event.preventDefault();
+
+        if (!isFinalSubmitConfirmed && window.localStorage.getItem('multiplayer') !== 'true') {
+          openPreSubmitModal();
+          return;
+        }
         
         // Intercept for Adaptive Remediation
         if (!remediationTriggered && window.localStorage.getItem('multiplayer') !== 'true' && window.localStorage.getItem('challengeMode') !== 'true') {
@@ -788,6 +905,9 @@
           });
 
           const result = await response.json();
+          if (result.incorrectIds && Array.isArray(result.incorrectIds)) {
+            window.localStorage.setItem('lastIncorrectQuestionIds', JSON.stringify(result.incorrectIds));
+          }
           const userName = window.localStorage.getItem('userName');
           const sectionId = window.localStorage.getItem('sectionId');
 

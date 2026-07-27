@@ -230,6 +230,20 @@
             </button>
           </div>
           
+          <!-- Multi-Category Custom Quiz Mixer Toggle -->
+          <div class="mt-3 p-3 bg-stone-900/40 border border-stone-800 rounded-xl space-y-2">
+            <div class="flex items-center justify-between">
+              <label for="custom-mix-toggle" class="text-xs font-bold text-stone-300 flex items-center gap-1.5 cursor-pointer">
+                <span>🔀</span> Multi-Category Custom Quiz Mix
+              </label>
+              <input type="checkbox" id="custom-mix-toggle" class="w-4 h-4 rounded border-stone-800 bg-stone-950 text-amber-500 focus:ring-0 cursor-pointer">
+            </div>
+            <p class="text-[10px] text-stone-500">Enable to mix questions across multiple topics simultaneously.</p>
+            <div id="custom-mix-category-list" class="hidden grid grid-cols-2 gap-2 pt-2 border-t border-stone-850 max-h-36 overflow-y-auto">
+              <!-- Dynamically populated category checkboxes -->
+            </div>
+          </div>
+          
           <!-- Topic Details Container -->
           <div id="topic-details-container" class="hidden mt-3 p-3 bg-stone-900/50 border border-stone-850 rounded-xl space-y-1">
             <div class="flex justify-between text-[11px] text-stone-400">
@@ -829,6 +843,21 @@
         renderFilterPills();
         renderFilteredSections('');
 
+        // Populate Custom Mix checklist
+        const mixList = document.getElementById('custom-mix-category-list');
+        if (mixList) {
+          mixList.innerHTML = '';
+          allSectionsList.forEach(sec => {
+            const label = document.createElement('label');
+            label.className = 'flex items-center gap-2 text-xs text-stone-300 cursor-pointer select-none';
+            label.innerHTML = `
+              <input type="checkbox" name="custom-mix-item" value="${sec.id}" class="w-3.5 h-3.5 rounded border-stone-800 bg-stone-950 text-amber-500 focus:ring-0">
+              <span class="truncate">${sec.name}</span>
+            `;
+            mixList.appendChild(label);
+          });
+        }
+
         const savedSectionId = window.localStorage.getItem('sectionId');
         const sectionSelect = document.getElementById('section-select');
         if (savedSectionId && allSectionsList.some(s => s.id == savedSectionId)) {
@@ -836,8 +865,20 @@
           updateTopicDetails(savedSectionId);
         }
       } catch (err) {
-        console.error("Error loading sections:", err);
+        console.error('Error loading sections:', err);
       }
+    }
+
+    const customMixToggle = document.getElementById('custom-mix-toggle');
+    const customMixList = document.getElementById('custom-mix-category-list');
+    if (customMixToggle && customMixList) {
+      customMixToggle.addEventListener('change', () => {
+        customMixList.classList.toggle('hidden', !customMixToggle.checked);
+        const sectionSelect = document.getElementById('section-select');
+        if (sectionSelect) {
+          sectionSelect.required = !customMixToggle.checked;
+        }
+      });
     }
 
     function renderFilterPills() {
@@ -952,12 +993,24 @@
     standardForm.addEventListener('submit', function(event) {
       event.preventDefault();
       const userName = userNameInput.value.trim();
-      const sectionId = document.getElementById('section-select').value;
+      let sectionId = document.getElementById('section-select').value;
       const difficulty = document.getElementById('difficulty-select').value;
       const count = document.getElementById('num-questions-select').value;
       const challengeMode = document.getElementById('challenge-mode-toggle').checked;
+      const isCustomMix = document.getElementById('custom-mix-toggle')?.checked;
 
       if (!userName) return;
+
+      if (isCustomMix) {
+        const checkedBoxes = Array.from(document.querySelectorAll('input[name="custom-mix-item"]:checked'))
+          .map(cb => cb.value);
+        if (checkedBoxes.length === 0) {
+          alert('Please select at least one topic for your custom mix!');
+          return;
+        }
+        sectionId = 'custom-mix';
+        window.localStorage.setItem('customMixCategories', checkedBoxes.join(','));
+      }
 
       window.localStorage.setItem('userName', userName);
       window.localStorage.setItem('sectionId', sectionId);
