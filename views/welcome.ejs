@@ -367,9 +367,9 @@
           <div id="notes-textarea-container" class="space-y-2">
             <label for="ai-notes" class="block text-xs font-semibold text-stone-400 mb-1 tracking-wide flex justify-between">
               <span>OR PASTE TEXT DIRECTLY</span>
-              <span id="char-count" class="text-[10px] font-normal text-stone-550">0 characters (min 50)</span>
+              <span id="char-count" class="text-[10px] font-normal text-stone-550">0 / 500 characters (min 50)</span>
             </label>
-            <textarea id="ai-notes" rows="4" class="neon-border block w-full p-4 border border-stone-800 bg-stone-950/45 text-stone-100 rounded-lg placeholder-stone-600 focus:outline-none text-xs resize-none" placeholder="Paste study notes here (minimum 50 characters)..." required></textarea>
+            <textarea id="ai-notes" rows="4" maxlength="500" class="neon-border block w-full p-4 border border-stone-800 bg-stone-950/45 text-stone-100 rounded-lg placeholder-stone-600 focus:outline-none text-xs resize-none" placeholder="Paste study notes here (minimum 50 characters, max 500)..." required></textarea>
           </div>
         </div>
 
@@ -789,13 +789,13 @@
     // Char counter
     aiNotes.addEventListener('input', () => {
       const len = aiNotes.value.length;
-      charCount.textContent = `${len} characters (min 50)`;
-      if (len >= 50) {
-        charCount.classList.remove('text-stone-500');
-        charCount.classList.add('text-amber-400');
+      charCount.textContent = `${len} / 500 characters (min 50)`;
+      if (len >= 450) {
+        charCount.className = 'text-[10px] font-semibold text-red-400';
+      } else if (len >= 50) {
+        charCount.className = 'text-[10px] font-semibold text-amber-400';
       } else {
-        charCount.classList.remove('text-amber-400');
-        charCount.classList.add('text-stone-500');
+        charCount.className = 'text-[10px] font-normal text-stone-500';
       }
     });
 
