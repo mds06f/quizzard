@@ -123,7 +123,7 @@ describe('Quiz Routes', () => {
       .send(answers)
       .set('Accept', 'application/json');
     expect(response.status).toBe(200);
-    expect(response.body).toEqual({ score: 2, total: 2 });
+    expect(response.body).toEqual({ score: 2, total: 2, incorrectIds: [] });
   });
 
   test('POST /api/quiz/save-result should save the result', async () => {
