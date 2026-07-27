@@ -628,6 +628,11 @@
             headers: { 'Content-Type': 'application/json' }
           });
           questionsData = await response.json();
+        } else if (sectionId === 'custom-mix') {
+          const count = window.localStorage.getItem('questionCount') || '5';
+          const cats = window.localStorage.getItem('customMixCategories') || '';
+          const response = await fetch(`/api/quiz/questions/custom-mix?categories=${cats}&count=${count}`);
+          questionsData = await response.json();
         } else {
           const count = window.localStorage.getItem('questionCount') || '5';
           const response = await fetch(`/api/quiz/questions/${sectionId}/${difficulty}?count=${count}`);

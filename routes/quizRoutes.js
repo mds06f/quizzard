@@ -148,6 +148,31 @@ router.post('/questions-by-ids', async (req, res) => {
   }
 });
 
+router.get('/questions/custom-mix', async (req, res) => {
+  const categories = (req.query.categories || '').split(',').map(c => c.trim()).filter(Boolean);
+  const count = parseInt(req.query.count, 10) || 10;
+  
+  try {
+    const allQuestions = (await db.getAllQuestions()) || [];
+    const catSet = new Set(categories.map(Number));
+    
+    let filtered = allQuestions.filter(q => catSet.has(Number(q.section_id)));
+    if (filtered.length === 0) {
+      filtered = [...allQuestions];
+    }
+
+    for (let i = filtered.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [filtered[i], filtered[j]] = [filtered[j], filtered[i]];
+    }
+
+    res.json(filtered.slice(0, count));
+  } catch (err) {
+    console.error('Error fetching custom mix questions:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 router.post('/generate-ai', upload.single('file'), async (req, res) => {
   const { text, difficulty, userName, numQuestions } = req.body;
   const file = req.file;
