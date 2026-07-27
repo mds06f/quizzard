@@ -115,6 +115,29 @@
     .score-circle {
       background: radial-gradient(circle, rgba(245, 158, 11, 0.1) 0%, rgba(217, 119, 6, 0.15) 100%);
     }
+
+    @media print {
+      body {
+        background: #ffffff !important;
+        color: #000000 !important;
+      }
+      #theme-toggle, #scroll-to-top-btn, #btn-review, #btn-bookmarks, #btn-share, #btn-print-results, #btn-reset-cache, a[href="/"] {
+        display: none !important;
+      }
+      .glass-card {
+        background: #ffffff !important;
+        border: 1px solid #e2e8f0 !important;
+        box-shadow: none !important;
+        color: #000000 !important;
+      }
+      .score-circle {
+        border-color: #d97706 !important;
+        background: #fffbe6 !important;
+      }
+      h1, h2, h3, p, span {
+        color: #000000 !important;
+      }
+    }
   </style>
 </head>
 
@@ -222,8 +245,12 @@
           class="bg-stone-900/80 border border-stone-800 text-stone-300 hover:text-white font-semibold p-3.5 rounded-lg transition duration-300 hover:border-amber-500/50 active:scale-[0.99] flex items-center justify-center gap-2">
           🔗 Share Score
         </button>
+        <button id="btn-print-results" onclick="window.print()" type="button"
+          class="bg-stone-900/80 border border-stone-800 text-stone-300 hover:text-white font-semibold p-3.5 rounded-lg transition duration-300 hover:border-amber-500/50 active:scale-[0.99] flex items-center justify-center gap-2">
+          🖨️ Print / Save PDF
+        </button>
         <a href="/"
-          class="bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-semibold p-3.5 rounded-lg shadow-lg active:scale-[0.99] transition duration-300 flex items-center justify-center gap-2">
+          class="sm:col-span-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-semibold p-3.5 rounded-lg shadow-lg active:scale-[0.99] transition duration-300 flex items-center justify-center gap-2">
           Take Another Quiz ➡️
         </a>
       </div>
