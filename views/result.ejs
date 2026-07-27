@@ -696,6 +696,35 @@
           }
         });
       }
+      function playVictoryChime() {
+        if (localStorage.getItem('soundEnabled') === 'false') {
+          return;
+        }
+        const AudioCtx = window.AudioContext || window.webkitAudioContext;
+        if (!AudioCtx) return;
+        try {
+          const ctx = new AudioCtx();
+          const notes = [523.25, 659.25, 783.99, 1046.50];
+          notes.forEach((freq, idx) => {
+            const osc = ctx.createOscillator();
+            const gain = ctx.createGain();
+            osc.type = 'sine';
+            osc.frequency.value = freq;
+
+            const startTime = ctx.currentTime + idx * 0.1;
+            gain.gain.setValueAtTime(0.15, startTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.3);
+
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(startTime);
+            osc.stop(startTime + 0.3);
+          });
+        } catch (e) {
+          console.error("Audio playback error:", e);
+        }
+      }
+
       function initThemeToggle() {
         const toggleBtn = document.createElement('button');
         toggleBtn.id = 'theme-toggle';
@@ -722,6 +751,7 @@
       }
 
       initThemeToggle();
+      playVictoryChime();
     });
   </script>
 </body>
