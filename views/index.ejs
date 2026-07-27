@@ -317,6 +317,27 @@
         btn.title = isBookmarked ? 'Remove bookmark' : 'Bookmark this question';
       }
 
+      function copyQuestionToClipboard(question) {
+        if (!question) return;
+        const formattedOptions = [
+          `A) ${question.option1}`,
+          `B) ${question.option2}`,
+          `C) ${question.option3}`,
+          `D) ${question.option4}`
+        ].join('\n');
+        const textToCopy = `Q: ${question.question}\n${formattedOptions}`;
+        navigator.clipboard.writeText(textToCopy).then(() => {
+          const btns = document.querySelectorAll(`.copy-question-btn[data-question-id="${question.id}"]`);
+          btns.forEach(btn => {
+            const originalHTML = btn.innerHTML;
+            btn.innerHTML = '✅';
+            setTimeout(() => { btn.innerHTML = originalHTML; }, 1500);
+          });
+        }).catch(err => {
+          console.error('Failed to copy question text:', err);
+        });
+      }
+
       function updateTimerUI() {
         const progressPercent = (timeLeft / TIME_LIMIT) * 100;
         const progressEl = document.getElementById('timer-progress');
@@ -547,9 +568,14 @@
               <span class="bg-amber-500/20 text-amber-300 font-bold text-xs rounded-full px-2.5 py-1 mt-0.5">${index + 1}</span>
               <p class="text-lg font-medium text-stone-100">${question.question}</p>
             </div>
-            <button type="button" class="bookmark-btn text-xl text-amber-400 hover:scale-110 active:scale-95 transition focus:outline-none flex-shrink-0" data-question-id="${question.id}">
-              ☆
-            </button>
+            <div class="flex items-center gap-2 flex-shrink-0">
+              <button type="button" class="copy-question-btn text-sm text-stone-400 hover:text-amber-300 hover:scale-110 active:scale-95 transition focus:outline-none px-2 py-1 bg-stone-850/60 hover:bg-stone-800 rounded border border-stone-800" title="Copy Question" data-question-id="${question.id}">
+                📋
+              </button>
+              <button type="button" class="bookmark-btn text-xl text-amber-400 hover:scale-110 active:scale-95 transition focus:outline-none" data-question-id="${question.id}">
+                ☆
+              </button>
+            </div>
           </div>
           
           <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 ml-8">
@@ -565,6 +591,11 @@
           </div>
         `;
           quizContainer.appendChild(questionElem);
+
+          questionElem.querySelector('.copy-question-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            copyQuestionToClipboard(question);
+          });
 
           questionElem.querySelector('.bookmark-btn').addEventListener('click', (e) => {
             e.stopPropagation();
@@ -1019,9 +1050,14 @@
                   <span class="bg-amber-500/20 text-amber-300 font-bold text-xs rounded-full px-2.5 py-1 mt-0.5">${questionIndex + 1}</span>
                   <p class="text-lg font-medium text-stone-100">${question.question}</p>
                 </div>
-                <button type="button" class="bookmark-btn text-xl text-amber-400 hover:scale-110 active:scale-95 transition focus:outline-none flex-shrink-0" data-question-id="${question.id}">
-                  ☆
-                </button>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                  <button type="button" class="copy-question-btn text-sm text-stone-400 hover:text-amber-300 hover:scale-110 active:scale-95 transition focus:outline-none px-2 py-1 bg-stone-850/60 hover:bg-stone-800 rounded border border-stone-800" title="Copy Question" data-question-id="${question.id}">
+                    📋
+                  </button>
+                  <button type="button" class="bookmark-btn text-xl text-amber-400 hover:scale-110 active:scale-95 transition focus:outline-none" data-question-id="${question.id}">
+                    ☆
+                  </button>
+                </div>
               </div>
               <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4 ml-8">
                 ${optionsList.map((opt, optIdx) => `
@@ -1037,6 +1073,11 @@
             `;
             quizContainer.appendChild(questionElem);
             
+            questionElem.querySelector('.copy-question-btn').addEventListener('click', (e) => {
+              e.stopPropagation();
+              copyQuestionToClipboard(question);
+            });
+
             // Star toggle
             questionElem.querySelector('.bookmark-btn').addEventListener('click', (e) => {
               e.stopPropagation();
