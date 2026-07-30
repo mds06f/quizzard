@@ -393,4 +393,11 @@ const db = {
 // Auto-initialize db file on module load if it doesn't exist
 readData();
 
+try {
+  const { runMigration } = require('./db/migrate');
+  runMigration();
+} catch (e) {
+  // Silent catch if migration module load fails
+}
+
 module.exports = db;

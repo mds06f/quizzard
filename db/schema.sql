@@ -1,0 +1,50 @@
+-- Quizzard Relational SQLite Schema Definition
+
+CREATE TABLE IF NOT EXISTS sections (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  tags TEXT,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS questions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  section_id INTEGER NOT NULL,
+  question TEXT NOT NULL,
+  option1 TEXT NOT NULL,
+  option2 TEXT NOT NULL,
+  option3 TEXT NOT NULL,
+  option4 TEXT NOT NULL,
+  correct_option INTEGER NOT NULL,
+  difficulty TEXT DEFAULT 'medium',
+  explanation TEXT,
+  FOREIGN KEY (section_id) REFERENCES sections(id)
+);
+
+CREATE TABLE IF NOT EXISTS users (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  username TEXT UNIQUE NOT NULL,
+  email TEXT UNIQUE NOT NULL,
+  password_hash TEXT NOT NULL,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS results (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_name TEXT NOT NULL,
+  section_id INTEGER NOT NULL,
+  score INTEGER NOT NULL,
+  total INTEGER NOT NULL,
+  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (section_id) REFERENCES sections(id)
+);
+
+CREATE TABLE IF NOT EXISTS challenge_leaderboard (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_name TEXT NOT NULL,
+  section_id INTEGER NOT NULL,
+  score INTEGER NOT NULL,
+  total INTEGER NOT NULL,
+  time_ms INTEGER NOT NULL,
+  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
