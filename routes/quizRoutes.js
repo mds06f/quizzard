@@ -173,6 +173,33 @@ router.post('/questions-by-ids', async (req, res) => {
   }
 });
 
+router.post('/ai-tutor', async (req, res) => {
+  const { questionText, explanation, userQuery } = req.body;
+  if (!userQuery) {
+    return res.status(400).json({ error: 'User query is required.' });
+  }
+
+  const apiKey = process.env.GEMINI_API_KEY;
+  if (apiKey && apiKey !== 'mock_key') {
+    try {
+      const ai = new GoogleGenAI({ apiKey });
+      const prompt = `Context Question: ${questionText}\nExplanation: ${explanation}\nStudent Question: ${userQuery}\n\nProvide a concise, encouraging, and clear 2-3 sentence explanation directly addressing the student's question.`;
+      const response = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: prompt
+      });
+      return res.json({ reply: response.text });
+    } catch (err) {
+      console.error('AI Tutor Gemini API error:', err);
+    }
+  }
+
+  // Fallback AI tutor response if Gemini API key is not configured or fails
+  return res.json({
+    reply: `Great question! Regarding "${questionText}": ${explanation} Focus on identifying key terms in the question options to select the correct choice next time!`
+  });
+});
+
 router.get('/questions/custom-mix', async (req, res) => {
   const categories = (req.query.categories || '').split(',').map(c => c.trim()).filter(Boolean);
   const count = parseInt(req.query.count, 10) || 10;
