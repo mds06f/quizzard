@@ -532,6 +532,13 @@
           currentSessionStreak++;
         } else {
           currentSessionStreak = 0;
+          const specialMode = window.localStorage.getItem('specialMode');
+          if (specialMode === 'sudden-death') {
+            setTimeout(() => {
+              alert('💀 Sudden Death! You answered incorrectly. Quiz terminated.');
+              confirmFinalSubmission();
+            }, 300);
+          }
         }
 
         if (hudStreakContainer && hudStreakCount) {

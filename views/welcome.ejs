@@ -277,16 +277,16 @@
           </div>
         </div>
 
-        <!-- Mode Selection -->
+        <!-- Special Gameplay Mode -->
         <div>
-          <label class="block text-sm font-semibold text-stone-300 mb-2 tracking-wide">PLAY MODE</label>
-          <div class="grid grid-cols-2 gap-3">
-            <button type="button" id="mode-single" class="tab-active p-3 border border-stone-800 bg-stone-950/40 rounded-lg text-sm text-stone-300 hover:text-stone-200 transition font-medium flex items-center justify-center gap-2">
-              <span>👤</span> Single Player
-            </button>
-            <button type="button" id="mode-multiplayer" class="p-3 border border-stone-800 bg-stone-950/40 rounded-lg text-sm text-stone-400 hover:text-stone-200 transition font-medium flex items-center justify-center gap-2">
-              <span>👥</span> Multiplayer
-            </button>
+          <label for="special-mode-select" class="block text-sm font-semibold text-stone-300 mb-2 tracking-wide">SPECIAL GAMEPLAY MODE</label>
+          <div class="neon-border flex rounded-lg border border-stone-800 bg-stone-950/45 transition duration-300">
+            <span class="inline-flex items-center px-3 text-stone-600 text-lg">🎮</span>
+            <select id="special-mode-select" class="block w-full p-3 bg-transparent text-stone-300 focus:outline-none text-base cursor-pointer">
+              <option value="standard" class="bg-stone-950 text-stone-100" selected>Standard Multiple-Choice</option>
+              <option value="sudden-death" class="bg-stone-950 text-stone-100">💀 Sudden Death (Instant Loss on Error)</option>
+              <option value="flashcards" class="bg-stone-950 text-stone-100">🎴 Flashcard Practice (Flip & Self-Rate)</option>
+            </select>
           </div>
         </div>
 
@@ -1088,11 +1088,14 @@
         window.localStorage.setItem('customMixCategories', checkedBoxes.join(','));
       }
 
+      const specialMode = document.getElementById('special-mode-select')?.value || 'standard';
+
       window.localStorage.setItem('userName', userName);
       window.localStorage.setItem('sectionId', sectionId);
       window.localStorage.setItem('difficulty', difficulty);
       window.localStorage.setItem('questionCount', count);
       window.localStorage.setItem('challengeMode', challengeMode ? 'true' : 'false');
+      window.localStorage.setItem('specialMode', specialMode);
       window.location.href = '/quiz';
     });
 
