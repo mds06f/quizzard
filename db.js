@@ -351,6 +351,42 @@ const db = {
     const data = readData();
     if (!data.sync_tokens || !data.sync_tokens[token]) return null;
     return data.sync_tokens[token].payload;
+  },
+
+  // User management
+  createUser: async (username, email, passwordHash) => {
+    const data = readData();
+    if (!data.users) data.users = [];
+    const newUser = {
+      id: data.users.length > 0 ? Math.max(...data.users.map(u => u.id)) + 1 : 1,
+      username,
+      email,
+      password_hash: passwordHash,
+      created_at: Date.now()
+    };
+    data.users.push(newUser);
+    writeData(data);
+    return { id: newUser.id, username: newUser.username, email: newUser.email };
+  },
+
+  findUserByUsername: async (username) => {
+    const data = readData();
+    if (!data.users) return null;
+    return data.users.find(u => u.username.toLowerCase() === username.toLowerCase()) || null;
+  },
+
+  findUserByEmail: async (email) => {
+    const data = readData();
+    if (!data.users) return null;
+    return data.users.find(u => u.email.toLowerCase() === email.toLowerCase()) || null;
+  },
+
+  getUserById: async (id) => {
+    const data = readData();
+    if (!data.users) return null;
+    const user = data.users.find(u => u.id === parseInt(id, 10));
+    if (!user) return null;
+    return { id: user.id, username: user.username, email: user.email };
   }
 };
 
