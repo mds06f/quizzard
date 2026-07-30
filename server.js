@@ -39,6 +39,11 @@ app.get('/quiz', (req, res) => {
   res.render('index');
 });
 
+app.get('/quiz/spectate/:roomCode', (req, res) => {
+  const { roomCode } = req.params;
+  res.render('spectate', { roomCode });
+});
+
 app.get('/result', (req, res) => {
   const { score, total, opponentName, opponentScore, coop, groupAccuracy } = req.query;
   let message = 'Better luck next time!';
@@ -92,6 +97,19 @@ const rooms = {};
 
 io.on('connection', (socket) => {
   console.log('User connected:', socket.id);
+
+  socket.on('joinSpectator', ({ roomCode }) => {
+    const room = rooms[roomCode];
+    if (!room) {
+      socket.emit('errorMessage', 'Room not found.');
+      return;
+    }
+    socket.join(roomCode);
+    socket.emit('spectatorState', {
+      mode: room.mode,
+      players: room.players.map(p => ({ name: p.name, score: p.score }))
+    });
+  });
 
   socket.on('createRoom', ({ userName, sectionId, difficulty, count, mode }) => {
     const roomCode = Math.floor(100000 + Math.random() * 900000).toString();
