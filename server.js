@@ -18,6 +18,7 @@ app.use(express.static('public'));
 
 const session = require('express-session');
 const adminRoutes = require('./routes/adminRoutes');
+const authRoutes = require('./routes/authRoutes');
 
 app.use(session({
   secret: 'quizzard-secret-key-13579',
@@ -27,6 +28,7 @@ app.use(session({
 }));
 
 app.use('/api/quiz', quizRoutes);
+app.use('/api/auth', authRoutes);
 app.use('/admin', adminRoutes);
 
 app.get('/', (req, res) => {
