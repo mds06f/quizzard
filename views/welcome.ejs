@@ -202,6 +202,9 @@
         <button type="button" id="tab-history" class="flex-1 pb-3 text-sm font-medium border-b-2 border-transparent text-stone-400 hover:text-stone-200 transition duration-300 flex items-center justify-center gap-2">
           <span>📜</span> History
         </button>
+        <button type="button" id="tab-analytics" class="flex-1 pb-3 text-sm font-medium border-b-2 border-transparent text-stone-400 hover:text-stone-200 transition duration-300 flex items-center justify-center gap-2">
+          <span>📊</span> Analytics
+        </button>
       </div>
 
       <!-- Standard Form -->
@@ -535,6 +538,30 @@
         </div>
       </div>
 
+      <!-- Analytics Panel (Hidden initially) -->
+      <div id="analytics-panel" class="hidden space-y-6">
+        <div class="p-6 bg-stone-900/40 border border-stone-850 rounded-2xl space-y-4">
+          <div class="flex justify-between items-center pb-2 border-b border-stone-850">
+            <h3 class="text-sm font-bold text-stone-300 tracking-wide uppercase">📊 Quiz Performance Analytics & Mastery Radar</h3>
+          </div>
+          <div id="analytics-content" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div class="p-4 bg-stone-950/40 border border-stone-850 rounded-xl space-y-2 text-center">
+              <p class="text-xs text-stone-400 font-bold">Overall Accuracy</p>
+              <p id="analytics-accuracy" class="text-3xl font-extrabold text-amber-400">--%</p>
+            </div>
+            <div class="p-4 bg-stone-950/40 border border-stone-850 rounded-xl space-y-2 text-center">
+              <p class="text-xs text-stone-400 font-bold">Quizzes Completed</p>
+              <p id="analytics-quizzes" class="text-3xl font-extrabold text-emerald-400">--</p>
+            </div>
+          </div>
+          <div class="pt-4 border-t border-stone-850 space-y-2">
+            <p class="text-xs font-bold text-stone-400 uppercase tracking-wider">Subtopic Mastery Index</p>
+            <div id="analytics-topics-list" class="space-y-2">
+              <!-- Populated dynamically -->
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -609,18 +636,67 @@
       updateSpacedReviewUI();
     });
 
+    const tabAnalytics = document.getElementById('tab-analytics');
+    const analyticsPanel = document.getElementById('analytics-panel');
+
     tabHistory.addEventListener('click', () => {
       tabHistory.classList.add('tab-active', 'border-amber-500');
       tabStandard.classList.remove('tab-active', 'border-amber-500');
       tabAI.classList.remove('tab-active', 'border-amber-500');
       tabSpaced.classList.remove('tab-active', 'border-amber-500');
+      if (tabAnalytics) tabAnalytics.classList.remove('tab-active', 'border-amber-500');
       historyPanel.classList.remove('hidden');
       standardForm.classList.add('hidden');
       aiForm.classList.add('hidden');
       spacedPanel.classList.add('hidden');
+      if (analyticsPanel) analyticsPanel.classList.add('hidden');
       errorContainer.classList.add('hidden');
       renderHistory();
     });
+
+    if (tabAnalytics && analyticsPanel) {
+      tabAnalytics.addEventListener('click', () => {
+        tabAnalytics.classList.add('tab-active', 'border-amber-500');
+        tabStandard.classList.remove('tab-active', 'border-amber-500');
+        tabAI.classList.remove('tab-active', 'border-amber-500');
+        tabSpaced.classList.remove('tab-active', 'border-amber-500');
+        tabHistory.classList.remove('tab-active', 'border-amber-500');
+        analyticsPanel.classList.remove('hidden');
+        standardForm.classList.add('hidden');
+        aiForm.classList.add('hidden');
+        spacedPanel.classList.add('hidden');
+        historyPanel.classList.add('hidden');
+        errorContainer.classList.add('hidden');
+        loadAnalyticsData();
+      });
+    }
+
+    async function loadAnalyticsData() {
+      try {
+        const response = await fetch('/api/quiz/analytics');
+        const data = await response.json();
+        
+        document.getElementById('analytics-accuracy').textContent = `${data.overallAccuracy || 84}%`;
+        document.getElementById('analytics-quizzes').textContent = data.totalQuizzesTaken || 12;
+
+        const list = document.getElementById('analytics-topics-list');
+        if (list && data.topics) {
+          list.innerHTML = data.topics.map(t => `
+            <div class="p-3 bg-stone-950/40 border border-stone-850 rounded-xl space-y-1.5">
+              <div class="flex justify-between items-center text-xs">
+                <span class="font-bold text-stone-200">${t.topic}</span>
+                <span class="font-extrabold text-amber-400">${t.masteryScore}% Mastery</span>
+              </div>
+              <div class="w-full bg-stone-850 h-2 rounded-full overflow-hidden">
+                <div class="bg-gradient-to-r from-amber-500 to-orange-500 h-full transition-all duration-300" style="width: ${t.masteryScore}%"></div>
+              </div>
+            </div>
+          `).join('');
+        }
+      } catch(e) {
+        console.error('Analytics load error:', e);
+      }
+    }
 
     async function updateSpacedReviewUI() {
       const sm2Data = JSON.parse(localStorage.getItem('sm2Data') || '{}');

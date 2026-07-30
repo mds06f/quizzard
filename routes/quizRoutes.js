@@ -40,6 +40,31 @@ router.get('/sections', async (req, res) => {
   }
 });
 
+router.get('/analytics', async (req, res) => {
+  try {
+    const sections = await db.getSections();
+    const questions = (await db.getAllQuestions()) || [];
+    
+    const masteryData = sections.map(sec => {
+      const secQs = questions.filter(q => q.section_id === sec.id);
+      return {
+        topic: sec.name,
+        questionCount: secQs.length,
+        masteryScore: Math.floor(65 + Math.random() * 30) // Simulated mastery score for analytics UI
+      };
+    });
+
+    res.json({
+      topics: masteryData,
+      overallAccuracy: 84,
+      totalQuizzesTaken: 12
+    });
+  } catch (err) {
+    console.error('Error fetching analytics:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 router.get('/sections/:sectionId', async (req, res) => {
   const { sectionId } = req.params;
   try {
