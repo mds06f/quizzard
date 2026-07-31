@@ -21,7 +21,9 @@
     "dotenv": "^16.4.5",
     "ejs": "^3.1.10",
     "express": "^4.19.2",
+    "express-rate-limit": "^8.6.1",
     "express-session": "^1.19.0",
+    "ioredis": "^6.0.0",
     "multer": "^2.2.0",
     "pdf-parse": "^2.4.5",
     "socket.io": "^4.8.3"
