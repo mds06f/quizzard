@@ -4,6 +4,8 @@ const db = require('../db');
 const { GoogleGenAI } = require('@google/genai');
 const multer = require('multer');
 const { PDFParse } = require('pdf-parse');
+const cacheService = require('../services/cacheService');
+const { aiRateLimiter } = require('../middleware/rateLimiter');
 
 const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
@@ -11,6 +13,12 @@ const upload = multer({
 
 router.get('/sections', async (req, res) => {
   try {
+    const cacheKey = 'quiz:sections';
+    const cachedSections = await cacheService.get(cacheKey);
+    if (cachedSections) {
+      return res.json(cachedSections);
+    }
+
     const results = await db.getSections();
     const allQuestions = (await db.getAllQuestions()) || [];
     
@@ -33,6 +41,7 @@ router.get('/sections', async (req, res) => {
       };
     });
     
+    await cacheService.set(cacheKey, enhanced, 600);
     res.json(enhanced);
   } catch (err) {
     console.error('Error fetching sections:', err);
@@ -83,7 +92,13 @@ router.get('/questions/:sectionId/:difficulty', async (req, res) => {
   const { sectionId, difficulty } = req.params;
   const count = parseInt(req.query.count, 10);
   try {
-    const results = await db.getQuestions(sectionId, difficulty);
+    const cacheKey = `quiz:questions:${sectionId}:${difficulty}`;
+    let results = await cacheService.get(cacheKey);
+
+    if (!results) {
+      results = await db.getQuestions(sectionId, difficulty);
+      await cacheService.set(cacheKey, results, 600);
+    }
     
     // Only shuffle and slice if it is NOT an AI section
     const isAI = isNaN(parseInt(sectionId, 10)) || sectionId.toString().includes('ai');
@@ -225,7 +240,7 @@ router.get('/questions/custom-mix', async (req, res) => {
   }
 });
 
-router.post('/generate-ai', upload.single('file'), async (req, res) => {
+router.post('/generate-ai', aiRateLimiter, upload.single('file'), async (req, res) => {
   const { text, difficulty, userName, numQuestions } = req.body;
   const file = req.file;
 
@@ -326,6 +341,9 @@ ${notesText}`;
     const sectionTitle = `AI Quiz: ${cleanName}`;
 
     const sectionId = await db.createAIQuiz(sectionTitle, quizData.questions);
+
+    // Invalidate the sections list cache
+    await cacheService.invalidateQuizCaches();
 
     res.json({ sectionId });
   } catch (err) {
