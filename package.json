@@ -11,7 +11,11 @@
     "test:e2e": "playwright test"
   },
   "jest": {
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "testPathIgnorePatterns": [
+      "/node_modules/",
+      "/tests/e2e/"
+    ]
   },
   "keywords": [],
   "author": "",
