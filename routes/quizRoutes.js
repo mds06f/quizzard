@@ -352,6 +352,24 @@ ${notesText}`;
   }
 });
 
+// POST bulk sync offline results
+router.post('/user/sync', async (req, res) => {
+  const { attempts } = req.body;
+  if (!attempts || !Array.isArray(attempts)) {
+    return res.status(400).json({ error: 'Attempts list is required.' });
+  }
+
+  try {
+    for (const attempt of attempts) {
+      await db.saveResult(attempt.userName, attempt.sectionId, attempt.score, attempt.total);
+    }
+    res.status(200).json({ message: 'Offline quiz results synced successfully.' });
+  } catch (err) {
+    console.error('Error syncing offline results:', err);
+    res.status(500).json({ error: 'Database error' });
+  }
+});
+
 // POST generate data sync token
 router.post('/user/sync/token', async (req, res) => {
   const { payload } = req.body;

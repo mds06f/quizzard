@@ -12,6 +12,7 @@
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="manifest" href="/manifest.json">
+  <script src="/js/offlineSync.js"></script>
   <meta name="theme-color" content="#0c0a09">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -121,6 +122,16 @@
         Interactive study engine powered by local storage & Gemini AI
       </p>
       
+      <!-- Offline & Sync Status Banner -->
+      <div id="offline-status-container" class="mt-4 flex flex-wrap justify-center gap-2">
+        <span id="offline-badge" class="inline-flex items-center gap-1.5 bg-red-500/10 border border-red-500/30 text-red-400 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm hidden">
+          🔴 Offline Mode
+        </span>
+        <span id="sync-badge" class="inline-flex items-center gap-1.5 bg-blue-500/10 border border-blue-500/30 text-blue-400 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm hidden">
+          🔄 <span id="sync-count">0</span> Pending Syncs
+        </span>
+      </div>
+
       <!-- Streak Badge -->
       <div id="streak-badge-container" class="mt-4 flex justify-center items-center hidden">
         <span class="inline-flex items-center gap-1.5 bg-orange-500/10 border border-orange-500/30 text-orange-400 text-xs font-bold px-3 py-1.5 rounded-full shadow-sm">
@@ -1413,6 +1424,87 @@
         }
       });
     }
+
+    // Offline Status and Synchronization Monitoring
+    const offlineBadge = document.getElementById('offline-badge');
+    const syncBadge = document.getElementById('sync-badge');
+    const syncCountEl = document.getElementById('sync-count');
+
+    async function updateSyncCount() {
+      if (window.offlineSync) {
+        try {
+          const count = await window.offlineSync.getPendingSyncCount();
+          if (count > 0) {
+            syncCountEl.textContent = count;
+            syncBadge.classList.remove('hidden');
+          } else {
+            syncBadge.classList.add('hidden');
+          }
+        } catch (err) {
+          console.error('Failed to load pending sync count:', err);
+        }
+      }
+    }
+
+    function updateOnlineStatus() {
+      if (navigator.onLine) {
+        offlineBadge.classList.add('hidden');
+        if (window.offlineSync) {
+          window.offlineSync.getPendingSyncs().then(async (attempts) => {
+            if (attempts.length > 0) {
+              console.log('[Offline Sync] Online detected. Performing manual sync fallback...');
+              try {
+                const response = await fetch('/api/quiz/user/sync', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ attempts })
+                });
+                if (response.ok) {
+                  const ids = attempts.map(a => a.id);
+                  await window.offlineSync.removePendingSyncs(ids);
+                  console.log('[Offline Sync] Manual sync fallback succeeded.');
+                  updateSyncCount();
+                }
+              } catch (e) {
+                console.warn('[Offline Sync] Manual sync fallback failed:', e);
+              }
+            }
+          });
+        }
+      } else {
+        offlineBadge.classList.remove('hidden');
+      }
+    }
+
+    window.addEventListener('online', () => {
+      updateOnlineStatus();
+      updateSyncCount();
+    });
+    window.addEventListener('offline', () => {
+      updateOnlineStatus();
+      updateSyncCount();
+    });
+
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.addEventListener('message', (event) => {
+        if (event.data && event.data.type === 'SYNC_STATUS_UPDATE') {
+          console.log('[Client] Received sync status update from Service Worker:', event.data.pendingCount);
+          const count = event.data.pendingCount;
+          if (count > 0) {
+            syncCountEl.textContent = count;
+            syncBadge.classList.remove('hidden');
+          } else {
+            syncBadge.classList.add('hidden');
+          }
+        }
+      });
+    }
+
+    // Run on startup
+    document.addEventListener('DOMContentLoaded', () => {
+      updateOnlineStatus();
+      updateSyncCount();
+    });
 
     // Service Worker Registration and PWA Install prompt
     let deferredPrompt;
