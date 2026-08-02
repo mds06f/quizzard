@@ -13,6 +13,7 @@
   </script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="/socket.io/socket.io.js"></script>
+  <script src="/js/speechEngine.js"></script>
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#0c0a09">
   <script>
@@ -147,6 +148,11 @@
         <button id="sound-toggle" type="button"
           class="bg-stone-900/60 border border-stone-850 rounded-lg px-3 py-2 hover:border-amber-500/40 transition">
           🔊
+        </button>
+
+        <button id="btn-read-aloud" type="button"
+          class="bg-stone-900/60 border border-stone-850 text-stone-400 hover:text-white rounded-lg px-3 py-2 hover:border-amber-500/40 transition flex items-center gap-1.5 text-xs font-bold" title="Read Aloud Narration">
+          📢 <span id="narration-status-label" class="hidden sm:inline text-stone-500">Read Aloud</span>
         </button>
         
         <button id="voice-command-toggle" type="button"
@@ -445,6 +451,13 @@
         }, 100);
 
         autosaveQuizState();
+
+        if (window.speechEngine && window.speechEngine.isNarrationEnabled()) {
+          const currentQuestion = questionsData[index];
+          if (currentQuestion) {
+            window.speechEngine.speak(currentQuestion.question);
+          }
+        }
       }
 
       let isQuizPaused = false;
@@ -593,6 +606,10 @@
           explanationDiv.className = 'mt-4 p-4 bg-amber-950/20 border-l-2 border-amber-500/50 rounded-lg text-sm text-amber-200 animate-fade-in';
           explanationDiv.innerHTML = `<strong>Explanation:</strong> ${questionData.explanation}`;
           questionElem.appendChild(explanationDiv);
+
+          if (window.speechEngine && window.speechEngine.isNarrationEnabled()) {
+            window.speechEngine.speak(`Explanation. ${questionData.explanation}`);
+          }
         }
 
         updateBottomButtonState(true);
@@ -1007,110 +1024,25 @@
             soundEnabled ? '🔊' : '🔇';
         });
 
-        // Voice Commands Support
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        let recognition = null;
-        let isVoiceActive = false;
-        
+        // Speech & Voice Engine Setup
         const voiceBtn = document.getElementById('voice-command-toggle');
-        const voiceStatus = document.getElementById('voice-status-label');
-        
-        function selectOptionByVoice(val) {
-          const activeQDiv = document.querySelector(`#quiz-container > div:not(.hidden)`);
-          if (!activeQDiv) return;
-          
-          const radio = activeQDiv.querySelector(`input[type="radio"][value="${val}"]`);
-          if (radio && !radio.disabled) {
-            radio.checked = true;
-            radio.dispatchEvent(new Event('change'));
-          }
-        }
+        const readAloudBtn = document.getElementById('btn-read-aloud');
 
-        function triggerNextByVoice() {
-          const actionBtn = document.getElementById('action-btn');
-          if (actionBtn && actionBtn.type === 'button' && !actionBtn.disabled) {
-            actionBtn.click();
+        if (window.speechEngine) {
+          if (!window.speechEngine.isSupported() && voiceBtn) {
+            voiceBtn.title = "Speech Recognition not supported in this browser";
+            voiceBtn.classList.add('opacity-40', 'cursor-not-allowed');
+          } else if (voiceBtn) {
+            voiceBtn.addEventListener('click', () => {
+              window.speechEngine.toggleListening();
+            });
           }
-        }
 
-        function triggerSubmitByVoice() {
-          const actionBtn = document.getElementById('action-btn');
-          if (actionBtn && actionBtn.type === 'submit' && !actionBtn.disabled) {
-            const quizForm = document.getElementById('quiz-form');
-            if (quizForm) {
-              quizForm.dispatchEvent(new Event('submit'));
-            }
+          if (readAloudBtn) {
+            readAloudBtn.addEventListener('click', () => {
+              window.speechEngine.toggleNarration();
+            });
           }
-        }
-        
-        if (SpeechRecognition && voiceBtn && voiceStatus) {
-          recognition = new SpeechRecognition();
-          recognition.continuous = true;
-          recognition.interimResults = false;
-          recognition.lang = 'en-US';
-          
-          recognition.onstart = () => {
-            isVoiceActive = true;
-            voiceBtn.classList.remove('text-stone-400');
-            voiceBtn.classList.add('text-emerald-400', 'border-emerald-500/30', 'bg-emerald-950/20');
-            voiceStatus.textContent = 'Listening';
-            voiceStatus.className = 'hidden sm:inline text-emerald-400';
-          };
-          
-          recognition.onend = () => {
-            if (isVoiceActive) {
-              try { recognition.start(); } catch(e) {}
-            } else {
-              voiceBtn.classList.add('text-stone-400');
-              voiceBtn.classList.remove('text-emerald-400', 'border-emerald-500/30', 'bg-emerald-950/20');
-              voiceStatus.textContent = 'Off';
-              voiceStatus.className = 'hidden sm:inline text-stone-500';
-            }
-          };
-          
-          recognition.onerror = (e) => {
-            console.error("Speech Recognition Error:", e);
-          };
-          
-          recognition.onresult = (event) => {
-            const resultIndex = event.resultIndex;
-            const transcript = event.results[resultIndex][0].transcript.trim().toLowerCase();
-            console.log("Speech heard:", transcript);
-            
-            if (transcript.includes('option a') || transcript.includes('select a') || transcript.includes('choose a') || transcript === 'a') {
-              selectOptionByVoice(1);
-            } else if (transcript.includes('option b') || transcript.includes('select b') || transcript.includes('choose b') || transcript === 'b') {
-              selectOptionByVoice(2);
-            } else if (transcript.includes('option c') || transcript.includes('select c') || transcript.includes('choose c') || transcript === 'c') {
-              selectOptionByVoice(3);
-            } else if (transcript.includes('option d') || transcript.includes('select d') || transcript.includes('choose d') || transcript === 'd') {
-              selectOptionByVoice(4);
-            } else if (transcript.includes('next') || transcript.includes('proceed') || transcript.includes('continue')) {
-              triggerNextByVoice();
-            } else if (transcript.includes('submit') || transcript.includes('finish') || transcript.includes('done')) {
-              triggerSubmitByVoice();
-            }
-          };
-          
-          voiceBtn.addEventListener('click', () => {
-            if (!isVoiceActive) {
-              try {
-                recognition.start();
-              } catch (err) {
-                console.error(err);
-              }
-            } else {
-              isVoiceActive = false;
-              try {
-                recognition.stop();
-              } catch (err) {
-                console.error(err);
-              }
-            }
-          });
-        } else if (voiceBtn) {
-          voiceBtn.title = "Speech Recognition not supported in this browser";
-          voiceBtn.classList.add('opacity-40', 'cursor-not-allowed');
         }
         const userName = window.localStorage.getItem('userName');
         const sectionId = window.localStorage.getItem('sectionId');
