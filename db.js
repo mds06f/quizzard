@@ -82,7 +82,8 @@ const defaultData = {
     }
 
   ],
-  results: []
+  results: [],
+  user_question_mastery: []
 };
 
 // Reads data from the JSON file. If it doesn't exist, it creates and seeds it.
@@ -387,6 +388,54 @@ const db = {
     const user = data.users.find(u => u.id === parseInt(id, 10));
     if (!user) return null;
     return { id: user.id, username: user.username, email: user.email };
+  },
+
+  getUserQuestionMastery: async (userId, questionId) => {
+    const data = readData();
+    if (!data.user_question_mastery) data.user_question_mastery = [];
+    return data.user_question_mastery.find(
+      m => m.user_id === userId && m.question_id === parseInt(questionId, 10)
+    ) || null;
+  },
+
+  saveUserQuestionMastery: async (entry) => {
+    const data = readData();
+    if (!data.user_question_mastery) data.user_question_mastery = [];
+    
+    const index = data.user_question_mastery.findIndex(
+      m => m.user_id === entry.user_id && m.question_id === parseInt(entry.question_id, 10)
+    );
+
+    const updatedEntry = {
+      ...entry,
+      question_id: parseInt(entry.question_id, 10)
+    };
+
+    if (index !== -1) {
+      data.user_question_mastery[index] = updatedEntry;
+    } else {
+      data.user_question_mastery.push(updatedEntry);
+    }
+    writeData(data);
+    return updatedEntry;
+  },
+
+  getAllUserQuestionMastery: async (userId) => {
+    const data = readData();
+    if (!data.user_question_mastery) data.user_question_mastery = [];
+    return data.user_question_mastery.filter(m => m.user_id === userId);
+  },
+
+  getDueUserQuestionMastery: async (userId) => {
+    const data = readData();
+    if (!data.user_question_mastery) data.user_question_mastery = [];
+    const today = new Date();
+    today.setHours(0,0,0,0);
+    const todayTime = today.getTime();
+    
+    return data.user_question_mastery.filter(
+      m => m.user_id === userId && m.due_date <= todayTime
+    );
   }
 };
 

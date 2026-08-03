@@ -64,6 +64,7 @@ if (cluster.isMaster) {
   const session = require('express-session');
   const adminRoutes = require('./routes/adminRoutes');
   const authRoutes = require('./routes/authRoutes');
+  const spacedRepetitionRoutes = require('./routes/spacedRepetitionRoutes');
 
   app.use(session({
     secret: 'quizzard-secret-key-13579',
@@ -74,6 +75,7 @@ if (cluster.isMaster) {
 
   app.use('/api/quiz', quizRoutes);
   app.use('/api/auth', authRoutes);
+  app.use('/api/spaced', spacedRepetitionRoutes);
   app.use('/admin', adminRoutes);
 
   app.get('/', (req, res) => {

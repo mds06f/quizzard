@@ -48,3 +48,14 @@ CREATE TABLE IF NOT EXISTS challenge_leaderboard (
   time_ms INTEGER NOT NULL,
   timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS user_question_mastery (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  user_id TEXT NOT NULL,
+  question_id INTEGER NOT NULL,
+  repetition_count INTEGER DEFAULT 0,
+  interval_days INTEGER DEFAULT 1,
+  easiness_factor REAL DEFAULT 2.5,
+  due_date INTEGER NOT NULL,
+  FOREIGN KEY (question_id) REFERENCES questions(id)
+);

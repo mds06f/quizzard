@@ -709,119 +709,137 @@
       }
     }
 
+    let activeDueIds = [];
+
     async function updateSpacedReviewUI() {
-      const sm2Data = JSON.parse(localStorage.getItem('sm2Data') || '{}');
-      const today = new Date();
-      today.setHours(0,0,0,0);
-      const todayTime = today.getTime();
+      const userName = (userNameInput && userNameInput.value.trim()) || window.localStorage.getItem('userName') || 'anonymous';
       
       let dueIds = [];
-      for (const qId in sm2Data) {
-        if (sm2Data[qId].dueDate <= todayTime) {
-          dueIds.push(parseInt(qId, 10));
-        }
-      }
-      
-      const badge = document.getElementById('spaced-badge');
-      const summary = document.getElementById('spaced-due-summary');
-      const btnStart = document.getElementById('btn-start-review');
-      
-      if (badge) {
-        if (dueIds.length > 0) {
-          badge.textContent = dueIds.length;
-          badge.classList.remove('hidden');
-        } else {
-          badge.classList.add('hidden');
-        }
-      }
-      
-      if (summary) {
-        if (dueIds.length > 0) {
-          summary.textContent = `You have ${dueIds.length} review items due today. Boost your retention!`;
-          if (btnStart) {
-            btnStart.disabled = false;
-            btnStart.classList.remove('opacity-50', 'cursor-not-allowed');
-          }
-        } else {
-          summary.textContent = `All caught up! You have 0 questions due for review today. 🎉`;
-          if (btnStart) {
-            btnStart.disabled = true;
-            btnStart.classList.add('opacity-50', 'cursor-not-allowed');
-          }
-        }
-      }
-
-      // Render Mastery Board
-      const masteryListContainer = document.getElementById('mastery-list-container');
-      const totalEl = document.getElementById('mastery-total-items');
-      const masteredEl = document.getElementById('mastery-mastered-items');
-      const avgEfEl = document.getElementById('mastery-avg-ef');
-      const qIds = Object.keys(sm2Data);
-      
-      if (qIds.length === 0) {
-        if (masteryListContainer) {
-          masteryListContainer.innerHTML = '<p class="text-stone-500 text-xs text-center py-6 italic">No review items scheduled yet. Take a quiz to start building your Mastery Board!</p>';
-        }
-        if (totalEl) totalEl.textContent = '0';
-        if (masteredEl) masteredEl.textContent = '0';
-        if (avgEfEl) avgEfEl.textContent = '2.50';
-        return;
-      }
+      let masteryList = [];
       
       try {
-        const response = await fetch('/api/quiz/questions-by-ids', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ ids: qIds.map(Number) })
-        });
-        const questions = await response.json();
+        const response = await fetch(`/api/spaced/due?userName=${encodeURIComponent(userName)}`);
+        const data = await response.json();
         
-        let masteredCount = 0;
-        let totalEf = 0;
+        dueIds = data.dueIds || [];
+        activeDueIds = dueIds;
+        masteryList = data.mastery || [];
+        
+        const badge = document.getElementById('spaced-badge');
+        const summary = document.getElementById('spaced-due-summary');
+        const btnStart = document.getElementById('btn-start-review');
+        
+        if (badge) {
+          if (dueIds.length > 0) {
+            badge.textContent = dueIds.length;
+            badge.classList.remove('hidden');
+          } else {
+            badge.textContent = '0';
+            badge.classList.add('hidden');
+          }
+        }
+        
+        if (summary) {
+          if (dueIds.length > 0) {
+            summary.textContent = `You have ${dueIds.length} review items due today. Boost your retention!`;
+            if (btnStart) {
+              btnStart.disabled = false;
+              btnStart.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+          } else {
+            summary.textContent = `All caught up! You have 0 questions due for review today. 🎉`;
+            if (btnStart) {
+              btnStart.disabled = true;
+              btnStart.classList.add('opacity-50', 'cursor-not-allowed');
+            }
+          }
+        }
+
+        // Render Mastery Board
+        const masteryListContainer = document.getElementById('mastery-list-container');
+        const totalEl = document.getElementById('mastery-total-items');
+        const masteredEl = document.getElementById('mastery-mastered-items');
+        const avgEfEl = document.getElementById('mastery-avg-ef');
+        
+        if (masteryList.length === 0) {
+          if (masteryListContainer) {
+            masteryListContainer.innerHTML = '<p class="text-stone-500 text-xs text-center py-6 italic">No review items scheduled yet. Take a quiz to start building your Mastery Board!</p>';
+          }
+          if (totalEl) totalEl.textContent = '0';
+          if (masteredEl) masteredEl.textContent = '0';
+          if (avgEfEl) avgEfEl.textContent = '2.50';
+          return;
+        }
+
         masteryListContainer.innerHTML = '';
-        
-        questions.forEach(q => {
-          const data = sm2Data[q.id];
-          if (!data) return;
-          
-          totalEf += data.easeFactor;
-          const isMastered = data.easeFactor >= 2.5 && data.repetitions >= 3;
-          if (isMastered) masteredCount++;
-          
+        masteryList.forEach(item => {
+          const isMastered = item.easeFactor >= 2.5 && item.repetitions >= 3;
           let statusText = "Learning";
           let statusClass = "border-amber-500/30 bg-amber-500/10 text-amber-400";
           if (isMastered) {
             statusText = "Mastered";
             statusClass = "border-emerald-500/30 bg-emerald-500/10 text-emerald-400";
-          } else if (data.repetitions === 0) {
+          } else if (item.repetitions === 0) {
             statusText = "Struggling";
             statusClass = "border-red-500/30 bg-red-500/10 text-red-400";
           }
           
-          const dateStr = new Date(data.dueDate).toLocaleDateString();
+          const dateStr = new Date(item.dueDate).toLocaleDateString();
           
           const card = document.createElement('div');
           card.className = "p-3 space-y-1.5 text-left border-b border-stone-850";
           card.innerHTML = `
             <div class="flex justify-between items-start gap-3">
-              <span class="text-xs font-medium text-stone-200 line-clamp-2">${q.question}</span>
+              <span class="text-xs font-medium text-stone-200 line-clamp-2">${item.question}</span>
               <span class="px-2 py-0.5 text-[9px] font-bold rounded-full border ${statusClass} shrink-0">${statusText}</span>
             </div>
             <div class="flex justify-between text-[10px] text-stone-500">
-              <span>EF: <strong class="text-stone-400">${data.easeFactor.toFixed(2)}</strong> | Reps: <strong class="text-stone-400">${data.repetitions}</strong></span>
+              <span>EF: <strong class="text-stone-400">${item.easeFactor.toFixed(2)}</strong> | Reps: <strong class="text-stone-400">${item.repetitions}</strong></span>
               <span>Next review: <strong class="text-stone-400">${dateStr}</strong></span>
+            </div>
+            
+            <div class="flex items-center justify-between border-t border-stone-850/60 pt-1.5 mt-1 text-[10px] text-stone-400">
+              <span>Quick Rate:</span>
+              <div class="flex gap-1" id="welcome-rating-group-${item.question_id}">
+                <button onclick="submitWelcomeRating(${item.question_id}, 0)" class="px-1.5 py-0.5 bg-stone-950 border border-stone-850 hover:border-red-500 hover:text-red-400 rounded text-[9px] font-bold transition cursor-pointer">0</button>
+                <button onclick="submitWelcomeRating(${item.question_id}, 2)" class="px-1.5 py-0.5 bg-stone-950 border border-stone-850 hover:border-amber-500 hover:text-amber-400 rounded text-[9px] font-bold transition cursor-pointer">2</button>
+                <button onclick="submitWelcomeRating(${item.question_id}, 3)" class="px-1.5 py-0.5 bg-stone-950 border border-stone-850 hover:border-emerald-500 hover:text-emerald-400 rounded text-[9px] font-bold transition cursor-pointer">3</button>
+                <button onclick="submitWelcomeRating(${item.question_id}, 5)" class="px-1.5 py-0.5 bg-stone-950 border border-stone-850 hover:border-emerald-500 hover:text-emerald-400 rounded text-[9px] font-bold transition cursor-pointer">5</button>
+              </div>
             </div>
           `;
           masteryListContainer.appendChild(card);
         });
-        
-        if (totalEl) totalEl.textContent = questions.length;
-        if (masteredEl) masteredEl.textContent = masteredCount;
-        if (avgEfEl) avgEfEl.textContent = (totalEf / questions.length).toFixed(2);
+
+        if (totalEl) totalEl.textContent = data.total;
+        if (masteredEl) masteredEl.textContent = data.mastered;
+        if (avgEfEl) avgEfEl.textContent = Number(data.avgEase).toFixed(2);
       } catch (err) {
         console.error("Error loading mastery board details:", err);
       }
     }
+
+    window.submitWelcomeRating = async function(questionId, rating) {
+      const userName = (userNameInput && userNameInput.value.trim()) || window.localStorage.getItem('userName') || 'anonymous';
+      try {
+        const response = await fetch('/api/spaced/review', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userName, questionId, rating })
+        });
+        if (response.ok) {
+          const group = document.getElementById(`welcome-rating-group-${questionId}`);
+          if (group) {
+            group.innerHTML = `<span class="text-emerald-400 font-bold text-[9px]">Rated: ${rating} ⭐</span>`;
+          }
+          setTimeout(updateSpacedReviewUI, 800);
+        } else {
+          alert('Failed to submit rating.');
+        }
+      } catch (err) {
+        console.error('Error submitting welcome rating:', err);
+      }
+    };
 
     function renderHistory() {
       const history = JSON.parse(localStorage.getItem('quizHistory') || '[]');
@@ -1790,22 +1808,11 @@
 
       // Bind Spaced Repetition action
       document.getElementById('btn-start-review').addEventListener('click', () => {
-        const sm2Data = JSON.parse(localStorage.getItem('sm2Data') || '{}');
-        const today = new Date();
-        today.setHours(0,0,0,0);
-        const todayTime = today.getTime();
+        if (activeDueIds.length === 0) return;
         
-        let dueIds = [];
-        for (const qId in sm2Data) {
-          if (sm2Data[qId].dueDate <= todayTime) {
-            dueIds.push(parseInt(qId, 10));
-          }
-        }
-        
-        if (dueIds.length === 0) return;
-        
-        dueIds.sort(() => 0.5 - Math.random());
-        const selectedReviewIds = dueIds.slice(0, 10);
+        const dueCopy = [...activeDueIds];
+        dueCopy.sort(() => 0.5 - Math.random());
+        const selectedReviewIds = dueCopy.slice(0, 10);
         
         const userName = userNameInput.value.trim() || 'Reviewer';
         window.localStorage.setItem('userName', userName);
