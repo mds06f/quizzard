@@ -49,9 +49,14 @@
       <div class="bg-stone-900/60 border border-stone-850 p-6 rounded-2xl shadow-xl backdrop-blur-md space-y-4">
         <div class="flex justify-between items-center pb-2 border-b border-stone-850">
           <h2 class="text-sm font-bold text-stone-300 uppercase tracking-wider">Topics</h2>
-          <button onclick="toggleModal('add-section-modal')" class="bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 font-bold px-2.5 py-1 rounded text-xs border border-amber-500/30 transition">
-            + Add
-          </button>
+          <div class="flex gap-1.5">
+            <button onclick="toggleModal('import-quiz-modal')" class="bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 font-bold px-2.5 py-1 rounded text-xs border border-amber-500/30 transition">
+              Import
+            </button>
+            <button onclick="toggleModal('add-section-modal')" class="bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 font-bold px-2.5 py-1 rounded text-xs border border-amber-500/30 transition">
+              + Add
+            </button>
+          </div>
         </div>
 
         <div class="space-y-2 max-h-[350px] overflow-y-auto pr-1">
@@ -169,6 +174,41 @@
         </div>
         <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2 px-4 rounded-lg shadow text-sm transition">
           Create Topic
+        </button>
+      </form>
+    </div>
+  </div>
+
+  <!-- Bulk Import Modal -->
+  <div id="import-quiz-modal" class="hidden fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-850">
+        <h3 class="text-sm font-bold text-stone-200 uppercase tracking-wider">Bulk Import Quiz Package</h3>
+        <button onclick="toggleModal('import-quiz-modal')" class="text-stone-500 hover:text-stone-300">✕</button>
+      </div>
+      
+      <form id="import-quiz-form" class="space-y-4">
+        <!-- Drag and Drop Zone -->
+        <div id="drop-zone" class="border-2 border-dashed border-stone-800 hover:border-amber-500/40 rounded-xl p-8 text-center cursor-pointer transition bg-stone-950/20">
+          <span class="text-3xl block mb-2">📁</span>
+          <p class="text-xs text-stone-300 font-medium">Drag & drop your CSV, JSON, or YAML file here</p>
+          <p class="text-[10px] text-stone-500 mt-1">or click to browse from your device</p>
+          <input type="file" id="import-file-input" name="file" accept=".csv,.json,.yaml,.yml" class="hidden">
+        </div>
+
+        <!-- Selected File Status Info -->
+        <div id="import-file-info" class="hidden p-3 bg-stone-950 border border-stone-850 rounded-xl flex items-center justify-between text-xs text-stone-300">
+          <span class="truncate text-stone-300" id="import-file-name">filename.json</span>
+          <button type="button" id="btn-remove-import-file" class="text-red-400 hover:text-red-300 font-bold cursor-pointer">Remove</button>
+        </div>
+
+        <!-- Validation Error Reports -->
+        <div id="import-errors" class="hidden p-3 bg-red-950/20 border border-red-500/30 text-red-400 text-xs rounded-xl max-h-32 overflow-y-auto space-y-1 text-left">
+          <!-- Populated dynamically -->
+        </div>
+
+        <button type="submit" id="btn-submit-import" disabled class="w-full bg-amber-600/50 text-stone-400 font-semibold py-2 px-4 rounded-lg shadow text-sm transition cursor-not-allowed">
+          Upload and Import
         </button>
       </form>
     </div>
@@ -364,6 +404,123 @@
 
       modal.classList.remove('hidden');
     }
+
+    // Drag and drop bulk import logic
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('import-file-input');
+    const fileInfo = document.getElementById('import-file-info');
+    const fileNameEl = document.getElementById('import-file-name');
+    const removeFileBtn = document.getElementById('btn-remove-import-file');
+    const submitBtn = document.getElementById('btn-submit-import');
+    const errorBox = document.getElementById('import-errors');
+    const importForm = document.getElementById('import-quiz-form');
+
+    let selectedFile = null;
+
+    dropZone.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    fileInput.addEventListener('change', (e) => {
+      handleFileSelect(e.target.files[0]);
+    });
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('border-amber-500', 'bg-amber-500/5');
+    });
+
+    dropZone.addEventListener('dragleave', () => {
+      dropZone.classList.remove('border-amber-500', 'bg-amber-500/5');
+    });
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('border-amber-500', 'bg-amber-500/5');
+      if (e.dataTransfer.files.length > 0) {
+        handleFileSelect(e.dataTransfer.files[0]);
+      }
+    });
+
+    function handleFileSelect(file) {
+      if (!file) return;
+      
+      const ext = file.name.split('.').pop().toLowerCase();
+      if (!['json', 'csv', 'yaml', 'yml'].includes(ext)) {
+        showErrors(['Unsupported file format. Please upload a JSON, CSV, or YAML file.']);
+        resetFileSelection();
+        return;
+      }
+
+      selectedFile = file;
+      fileNameEl.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+      fileInfo.classList.remove('hidden');
+      errorBox.classList.add('hidden');
+      
+      submitBtn.disabled = false;
+      submitBtn.classList.remove('bg-amber-600/50', 'text-stone-400', 'cursor-not-allowed');
+      submitBtn.classList.add('bg-amber-600', 'hover:bg-amber-500', 'text-white', 'cursor-pointer');
+    }
+
+    removeFileBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      resetFileSelection();
+    });
+
+    function resetFileSelection() {
+      selectedFile = null;
+      fileInput.value = '';
+      fileInfo.classList.add('hidden');
+      submitBtn.disabled = true;
+      submitBtn.classList.remove('bg-amber-600', 'hover:bg-amber-500', 'text-white', 'cursor-pointer');
+      submitBtn.classList.add('bg-amber-600/50', 'text-stone-400', 'cursor-not-allowed');
+    }
+
+    function showErrors(errors) {
+      errorBox.innerHTML = '';
+      errors.forEach(err => {
+        const p = document.createElement('p');
+        p.textContent = `• ${err}`;
+        errorBox.appendChild(p);
+      });
+      errorBox.classList.remove('hidden');
+    }
+
+    importForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!selectedFile) return;
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Importing...';
+
+      const formData = new FormData();
+      formData.append('importFile', selectedFile);
+
+      try {
+        const response = await fetch('/admin/sections/import', {
+          method: 'POST',
+          body: formData
+        });
+
+        const result = await response.json();
+        if (response.ok) {
+          window.location.reload();
+        } else {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Upload and Import';
+          if (result.details && Array.isArray(result.details)) {
+            showErrors(result.details);
+          } else {
+            showErrors([result.error || 'Failed to import quiz.']);
+          }
+        }
+      } catch (err) {
+        console.error('Import error:', err);
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Upload and Import';
+        showErrors(['Network or server error during import.']);
+      }
+    });
 
     // Default selection
     const firstSection = document.querySelector('[onclick^="selectSection"]');

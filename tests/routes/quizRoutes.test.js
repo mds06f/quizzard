@@ -1,6 +1,20 @@
 const request = require('supertest');
 const express = require('express');
 const bodyParser = require('body-parser');
+
+jest.mock('ioredis', () => {
+  return jest.fn().mockImplementation(() => {
+    return {
+      on: jest.fn(),
+      get: jest.fn().mockResolvedValue(null),
+      set: jest.fn().mockResolvedValue('OK'),
+      del: jest.fn().mockResolvedValue(1),
+      disconnect: jest.fn(),
+      keys: jest.fn().mockResolvedValue([])
+    };
+  });
+});
+
 const quizRoutes = require('../../routes/quizRoutes');
 const db = require('../../db');
 
