@@ -3,6 +3,8 @@ const router = express.Router();
 const db = require('../db');
 const multer = require('multer');
 const upload = multer({ limits: { fileSize: 5 * 1024 * 1024 } });
+const { auditLogger } = require('../middleware/auditLogger');
+const { importQuizPackage, parseYAML, parseCSV, validateQuizPackage } = require('../services/quizImporter');
 
 // Middleware to verify admin session
 function isAdmin(req, res, next) {
@@ -53,7 +55,7 @@ router.get('/', isAdmin, async (req, res) => {
 });
 
 // POST add new section
-router.post('/sections', isAdmin, async (req, res) => {
+router.post('/sections', isAdmin, auditLogger('CREATE_SECTION'), async (req, res) => {
   const { name } = req.body;
   if (!name || name.trim() === '') {
     return res.redirect('/admin');
@@ -68,7 +70,7 @@ router.post('/sections', isAdmin, async (req, res) => {
 });
 
 // POST edit section
-router.post('/sections/:id/edit', isAdmin, async (req, res) => {
+router.post('/sections/:id/edit', isAdmin, auditLogger('EDIT_SECTION'), async (req, res) => {
   const { id } = req.params;
   const { name } = req.body;
   try {
@@ -81,7 +83,7 @@ router.post('/sections/:id/edit', isAdmin, async (req, res) => {
 });
 
 // POST delete section
-router.post('/sections/:id/delete', isAdmin, async (req, res) => {
+router.post('/sections/:id/delete', isAdmin, auditLogger('DELETE_SECTION'), async (req, res) => {
   const { id } = req.params;
   try {
     await db.deleteSection(id);
@@ -93,7 +95,7 @@ router.post('/sections/:id/delete', isAdmin, async (req, res) => {
 });
 
 // POST add question
-router.post('/questions', isAdmin, async (req, res) => {
+router.post('/questions', isAdmin, auditLogger('CREATE_QUESTION'), async (req, res) => {
   const { section_id, question, option1, option2, option3, option4, correct_option, difficulty, explanation, category } = req.body;
   try {
     await db.addQuestion(section_id, {
@@ -115,7 +117,7 @@ router.post('/questions', isAdmin, async (req, res) => {
 });
 
 // POST edit question
-router.post('/questions/:id/edit', isAdmin, async (req, res) => {
+router.post('/questions/:id/edit', isAdmin, auditLogger('EDIT_QUESTION'), async (req, res) => {
   const { id } = req.params;
   const { question, option1, option2, option3, option4, correct_option, difficulty, explanation, category } = req.body;
   try {
@@ -138,7 +140,7 @@ router.post('/questions/:id/edit', isAdmin, async (req, res) => {
 });
 
 // POST delete question
-router.post('/questions/:id/delete', isAdmin, async (req, res) => {
+router.post('/questions/:id/delete', isAdmin, auditLogger('DELETE_QUESTION'), async (req, res) => {
   const { id } = req.params;
   try {
     await db.deleteQuestion(id);
@@ -279,6 +281,46 @@ router.post('/import-questions', isAdmin, upload.single('csvFile'), async (req, 
   } catch (err) {
     console.error('Error importing questions:', err);
     res.status(500).send('Error importing questions');
+  }
+});
+
+// POST import section and questions package (JSON/CSV/YAML)
+router.post('/sections/import', isAdmin, upload.single('importFile'), auditLogger('IMPORT_SECTION'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'No file uploaded.' });
+  }
+
+  const fileName = req.file.originalname;
+  const fileText = req.file.buffer.toString('utf8');
+  let pkg = null;
+
+  try {
+    if (fileName.endsWith('.json')) {
+      pkg = JSON.parse(fileText);
+    } else if (fileName.endsWith('.yaml') || fileName.endsWith('.yml')) {
+      pkg = parseYAML(fileText);
+    } else if (fileName.endsWith('.csv')) {
+      const sectionName = fileName.replace(/\.[^/.]+$/, "").replace(/[_-]/g, " ");
+      const parsed = parseCSV(fileText);
+      pkg = {
+        sectionName,
+        questions: parsed.questions
+      };
+    } else {
+      return res.status(400).json({ error: 'Unsupported file format. Please upload a JSON, CSV, or YAML file.' });
+    }
+
+    const validation = validateQuizPackage(pkg);
+    if (!validation.valid) {
+      return res.status(400).json({ error: 'Validation failed', details: validation.errors });
+    }
+
+    const section = await importQuizPackage(pkg);
+    res.json({ message: 'Success', sectionId: section.id, sectionName: section.name });
+
+  } catch (err) {
+    console.error('Error during import:', err);
+    res.status(500).json({ error: 'Server error during import: ' + err.message });
   }
 });
 
