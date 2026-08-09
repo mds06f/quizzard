@@ -212,6 +212,16 @@
       </div>
     </div>
 
+    <!-- Reconnecting Modal Overlay -->
+    <div id="reconnect-modal" class="hidden fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 animate-fade-in">
+      <div class="glass-card rounded-2xl p-8 max-w-md w-full text-center space-y-5 border border-stone-850 shadow-2xl">
+        <div class="w-12 h-12 border-4 border-t-amber-500 border-stone-850 rounded-full animate-spin mx-auto"></div>
+        <h2 class="text-xl font-bold text-stone-200">Connection Lost</h2>
+        <p class="text-xs text-stone-400">Reconnecting to multiplayer match lobby... Please stand by.</p>
+      </div>
+    </div>
+
+
     <!-- Pre-submission Answer Review Modal Overlay -->
     <div id="pre-submit-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
       <div class="glass-card rounded-2xl p-6 sm:p-8 max-w-lg w-full text-center space-y-5 border border-stone-800 shadow-2xl">
@@ -1145,14 +1155,28 @@
         const isMultiplayer = window.localStorage.getItem('multiplayer') === 'true';
         if (isMultiplayer) {
           const socket = io();
+          const reconnectModal = document.getElementById('reconnect-modal');
           const roomMode = window.localStorage.getItem('roomMode') || 'competitive';
-          
           if (roomMode === 'cooperative') {
             document.getElementById('cooperative-scoreboard').classList.remove('hidden');
           } else {
             document.getElementById('multiplayer-scoreboard').classList.remove('hidden');
           }
-          
+
+          socket.on('disconnect', (reason) => {
+            console.warn('Socket disconnected:', reason);
+            if (reconnectModal) reconnectModal.classList.remove('hidden');
+          });
+
+          socket.on('connect', () => {
+            console.log('Socket connected/reconnected.');
+            if (reconnectModal) reconnectModal.classList.add('hidden');
+            const roomCode = window.localStorage.getItem('roomCode');
+            if (roomCode) {
+              socket.emit('rejoinRoom', { roomCode, userName });
+            }
+          });
+
           socket.emit('quizReady', { roomCode: window.localStorage.getItem('roomCode') });
 
           socket.on('loadQuestion', ({ questionIndex, totalQuestions, question }) => {
