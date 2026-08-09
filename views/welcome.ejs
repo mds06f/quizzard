@@ -309,6 +309,9 @@
               <option value="flashcards" class="bg-stone-950 text-stone-100">🎴 Flashcard Practice (Flip & Self-Rate)</option>
             </select>
           </div>
+          <div id="special-mode-desc-container" class="hidden mt-2.5 p-3 bg-amber-950/20 border border-amber-500/20 rounded-xl text-xs text-amber-200 animate-fade-in transition duration-300">
+            <p id="special-mode-desc-text"></p>
+          </div>
         </div>
 
         <!-- Timed Challenge Mode Checkbox -->
@@ -1612,6 +1615,33 @@
       if (topicSearch) {
         topicSearch.addEventListener('input', (e) => {
           renderFilteredSections(e.target.value.trim());
+        });
+      }
+
+      // Bind special gameplay mode select descriptions
+      const specialModeSelect = document.getElementById('special-mode-select');
+      const specialModeDescContainer = document.getElementById('special-mode-desc-container');
+      const specialModeDescText = document.getElementById('special-mode-desc-text');
+
+      function updateSpecialModeDesc(value) {
+        if (!specialModeSelect || !specialModeDescContainer || !specialModeDescText) return;
+        
+        if (value === 'sudden-death') {
+          specialModeDescText.textContent = "💀 Sudden Death Mode: Get one question wrong and the quiz ends instantly!";
+          specialModeDescContainer.classList.remove('hidden');
+        } else if (value === 'flashcards') {
+          specialModeDescText.textContent = "🎴 Flashcard Practice: Review concepts dynamically by flipping cards, self-rating answers, and practicing spaced repetition without a timer or scores.";
+          specialModeDescContainer.classList.remove('hidden');
+        } else {
+          specialModeDescContainer.classList.add('hidden');
+          specialModeDescText.textContent = "";
+        }
+      }
+
+      if (specialModeSelect) {
+        updateSpecialModeDesc(specialModeSelect.value);
+        specialModeSelect.addEventListener('change', (e) => {
+          updateSpecialModeDesc(e.target.value);
         });
       }
 
