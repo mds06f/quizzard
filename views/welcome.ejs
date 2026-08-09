@@ -485,6 +485,10 @@
             <button id="btn-export-history" type="button" class="text-xs text-amber-400 hover:text-amber-300 hover:underline transition">
               💾 Export Progress
             </button>
+            <input type="file" id="import-progress-file" accept=".txt" class="hidden">
+            <button id="btn-import-history" type="button" class="text-xs text-amber-400 hover:text-amber-300 hover:underline transition">
+              📥 Import Progress
+            </button>
             <button id="btn-clear-history" type="button" class="text-xs text-red-400 hover:text-red-300 hover:underline transition">
               Clear History
             </button>
@@ -899,29 +903,88 @@
       });
     }
 
+     const BACKUP_KEY = "quizzard_backup_secret_key_2026";
+     function encryptData(text) {
+       let result = "";
+       for (let i = 0; i < text.length; i++) {
+         result += String.fromCharCode(text.charCodeAt(i) ^ BACKUP_KEY.charCodeAt(i % BACKUP_KEY.length));
+       }
+       return btoa(unescape(encodeURIComponent(result)));
+     }
+     function decryptData(ciphertext) {
+       try {
+         const decoded = decodeURIComponent(escape(atob(ciphertext)));
+         let result = "";
+         for (let i = 0; i < decoded.length; i++) {
+           result += String.fromCharCode(decoded.charCodeAt(i) ^ BACKUP_KEY.charCodeAt(i % BACKUP_KEY.length));
+         }
+         return result;
+       } catch (err) {
+         return null;
+       }
+     }
+
      const btnExportHistory = document.getElementById('btn-export-history');
-    if (btnExportHistory) {
-      btnExportHistory.addEventListener('click', () => {
-        const backup = {
-          userName: localStorage.getItem('userName') || '',
-          quizHistory: JSON.parse(localStorage.getItem('quizHistory') || '[]'),
-          sm2Data: JSON.parse(localStorage.getItem('sm2Data') || '{}'),
-          soundEnabled: localStorage.getItem('soundEnabled') !== 'false',
-          vibrationEnabled: localStorage.getItem('vibrationEnabled') !== 'false'
-        };
-        
-        const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        const dateString = new Date().toISOString().slice(0, 10);
-        a.href = url;
-        a.download = `quizzard-backup-${dateString}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-      });
-    }
+     if (btnExportHistory) {
+       btnExportHistory.addEventListener('click', () => {
+         const backup = {
+           userName: localStorage.getItem('userName') || '',
+           quizHistory: JSON.parse(localStorage.getItem('quizHistory') || '[]'),
+           sm2Data: JSON.parse(localStorage.getItem('sm2Data') || '{}'),
+           soundEnabled: localStorage.getItem('soundEnabled') !== 'false',
+           vibrationEnabled: localStorage.getItem('vibrationEnabled') !== 'false'
+         };
+         const encrypted = encryptData(JSON.stringify(backup));
+         const blob = new Blob([encrypted], { type: 'text/plain' });
+         const url = URL.createObjectURL(blob);
+         const a = document.createElement('a');
+         const dateString = new Date().toISOString().slice(0, 10);
+         a.href = url;
+         a.download = `quizzard-backup-${dateString}.txt`;
+         document.body.appendChild(a);
+         a.click();
+         document.body.removeChild(a);
+         URL.revokeObjectURL(url);
+       });
+     }
+
+     const btnImportHistory = document.getElementById('btn-import-history');
+     const importProgressFile = document.getElementById('import-progress-file');
+     if (btnImportHistory && importProgressFile) {
+       btnImportHistory.addEventListener('click', () => {
+         importProgressFile.click();
+       });
+       importProgressFile.addEventListener('change', (e) => {
+         const file = e.target.files[0];
+         if (!file) return;
+         const reader = new FileReader();
+         reader.onload = function(evt) {
+           const decrypted = decryptData(evt.target.result.trim());
+           if (!decrypted) {
+             alert("Error: Tampered or invalid progress backup file!");
+             return;
+           }
+           try {
+             const payload = JSON.parse(decrypted);
+             if (!payload || typeof payload !== 'object' || !payload.quizHistory) {
+               throw new Error("Invalid structure");
+             }
+             if (payload.quizHistory) localStorage.setItem('quizHistory', JSON.stringify(payload.quizHistory));
+             if (payload.sm2Data) localStorage.setItem('sm2Data', JSON.stringify(payload.sm2Data));
+             if (payload.userName) localStorage.setItem('userName', payload.userName);
+             if (payload.soundEnabled !== undefined) localStorage.setItem('soundEnabled', payload.soundEnabled);
+             if (payload.vibrationEnabled !== undefined) localStorage.setItem('vibrationEnabled', payload.vibrationEnabled);
+             
+             alert("Progress imported successfully! App will now refresh.");
+             window.location.reload();
+           } catch(err) {
+             alert("Error: Tampered or invalid progress backup file structure!");
+           }
+         };
+         reader.readAsText(file);
+         importProgressFile.value = ''; // Reset input
+       });
+     }
 
     if (btnClearHistory) {
       const modal = document.getElementById('clear-confirm-modal');
