@@ -267,7 +267,10 @@
         <div id="quiz-progress-container" class="space-y-1.5 mb-6">
           <div class="flex justify-between items-center text-[10px] font-bold text-stone-500 uppercase tracking-wider">
             <span>Progress Indicator</span>
-            <span id="quiz-progress-text">0 / 0 Completed</span>
+            <div class="flex items-center gap-3">
+              <span id="est-time-remaining" class="text-amber-400 font-bold normal-case tracking-normal">Est. Time: ~0 mins</span>
+              <span id="quiz-progress-text">0 / 0 Completed</span>
+            </div>
           </div>
           <div class="h-1.5 w-full bg-stone-900 rounded-full overflow-hidden border border-stone-800">
             <div id="quiz-progress-bar" class="h-full bg-gradient-to-r from-emerald-500 to-teal-500 transition-all duration-300" style="width: 0%;"></div>
@@ -427,6 +430,18 @@
         }
         if (progressText) {
           progressText.textContent = `${index} / ${totalQuestions} Completed`;
+        }
+
+        const estTimeEl = document.getElementById('est-time-remaining');
+        if (estTimeEl) {
+          const remainingCount = totalQuestions - index;
+          const totalSeconds = remainingCount * 15;
+          if (totalSeconds < 60) {
+            estTimeEl.textContent = `Est. Time: ~${totalSeconds} secs`;
+          } else {
+            const mins = Math.max(1, Math.round(totalSeconds / 60));
+            estTimeEl.textContent = `Est. Time: ~${mins} min${mins > 1 ? 's' : ''}`;
+          }
         }
 
         // Show current question, hide others
