@@ -240,9 +240,12 @@
           <div id="category-filter-pills" class="flex flex-wrap gap-2 mb-3"></div>
 
           <!-- Topic Search Bar -->
-          <div class="neon-border flex rounded-lg border border-stone-800 bg-stone-950/45 transition duration-300 mb-3">
+          <div class="neon-border relative flex items-center rounded-lg border border-stone-800 bg-stone-950/45 transition duration-300 mb-3">
             <span class="inline-flex items-center px-3 text-stone-600 text-sm">🔍</span>
-            <input type="text" id="topic-search" class="block w-full p-2.5 bg-transparent text-stone-100 placeholder-stone-600 focus:outline-none text-xs" placeholder="Search topics...">
+            <input type="text" id="topic-search" class="block w-full py-2.5 pl-0 pr-8 bg-transparent text-stone-100 placeholder-stone-600 focus:outline-none text-xs" placeholder="Search topics...">
+            <button type="button" id="btn-clear-search" class="hidden absolute right-2.5 text-stone-500 hover:text-stone-300 font-bold text-sm transition focus:outline-none select-none">
+              &times;
+            </button>
           </div>
 
           <div class="neon-border flex rounded-lg border border-stone-800 bg-stone-950/45 transition duration-300">
@@ -1654,9 +1657,23 @@
 
       // Bind topic search field
       const topicSearch = document.getElementById('topic-search');
-      if (topicSearch) {
+      const btnClearSearch = document.getElementById('btn-clear-search');
+      if (topicSearch && btnClearSearch) {
         topicSearch.addEventListener('input', (e) => {
-          renderFilteredSections(e.target.value.trim());
+          const val = e.target.value.trim();
+          if (val.length > 0) {
+            btnClearSearch.classList.remove('hidden');
+          } else {
+            btnClearSearch.classList.add('hidden');
+          }
+          renderFilteredSections(val);
+        });
+
+        btnClearSearch.addEventListener('click', () => {
+          topicSearch.value = '';
+          btnClearSearch.classList.add('hidden');
+          renderFilteredSections('');
+          topicSearch.focus();
         });
       }
 
