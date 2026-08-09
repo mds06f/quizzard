@@ -504,7 +504,7 @@
 
         const result = await response.json();
         if (response.ok) {
-          window.location.reload();
+          window.location.href = '/admin?success=questions_imported';
         } else {
           submitBtn.disabled = false;
           submitBtn.textContent = 'Upload and Import';
@@ -539,6 +539,75 @@
         });
       }
     });
+
+    // Toast Alert Helper Function
+    function showAdminToast(message, type = "success") {
+      const container = document.getElementById('toast-container');
+      if (!container) return;
+
+      const toast = document.createElement('div');
+      toast.className = `pointer-events-auto flex items-center gap-3 p-4 rounded-xl border text-sm font-medium shadow-2xl transition duration-300 transform translate-y-2 opacity-0 max-w-sm`;
+      
+      if (type === "success") {
+        toast.className += " bg-emerald-950/90 border-emerald-500/30 text-emerald-200";
+      } else if (type === "error") {
+        toast.className += " bg-red-950/90 border-red-500/30 text-red-200";
+      } else {
+        toast.className += " bg-stone-900/90 border-stone-850 text-stone-200";
+      }
+
+      const icon = document.createElement('span');
+      icon.className = "text-base flex-shrink-0";
+      icon.textContent = type === "success" ? "✅" : type === "error" ? "❌" : "ℹ️";
+      
+      const text = document.createElement('span');
+      text.textContent = message;
+
+      toast.appendChild(icon);
+      toast.appendChild(text);
+      container.appendChild(toast);
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 10);
+
+      setTimeout(() => {
+        toast.classList.add('translate-y-2', 'opacity-0');
+        setTimeout(() => {
+          toast.remove();
+        }, 300);
+      }, 4000);
+    }
+
+    // Check for success/error parameters on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      const urlParams = new URLSearchParams(window.location.search);
+      const successVal = urlParams.get('success');
+      const errorVal = urlParams.get('error');
+
+      if (successVal) {
+        const msgs = {
+          section_created: "Topic created successfully! 🎉",
+          section_updated: "Topic updated successfully! ✏️",
+          section_deleted: "Topic deleted successfully! 🗑️",
+          question_created: "Question added successfully! 📝",
+          question_updated: "Question updated successfully! ✏️",
+          question_deleted: "Question deleted successfully! 🗑️",
+          questions_imported: "Questions imported successfully! 📥"
+        };
+        showAdminToast(msgs[successVal] || "Action completed successfully!", "success");
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
+      if (errorVal) {
+        const readableError = errorVal.replace(/_/g, ' ');
+        const errorMsg = readableError.charAt(0).toUpperCase() + readableError.slice(1);
+        showAdminToast(errorMsg || "An error occurred.", "error");
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+    });
   </script>
+  <!-- Dynamic Action Toast Container -->
+  <div id="toast-container" class="fixed bottom-5 right-5 z-50 flex flex-col gap-3 pointer-events-none"></div>
 </body>
 </html>

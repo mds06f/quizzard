@@ -116,6 +116,10 @@
     .animate-fade-in {
       animation: fadeIn 0.3s ease-out forwards;
     }
+    /* Smooth theme transitions */
+    body, .glass-card, h1, h2, h3, h4, p, span, label, button, input, select, textarea, .neon-border {
+      transition: background-color 300ms ease, border-color 300ms ease, color 300ms ease, box-shadow 300ms ease;
+    }
   </style>
 </head>
 
@@ -292,6 +296,11 @@
         if (localStorage.getItem('soundEnabled') === 'false') {
           return;
         }
+        const storedVolume = parseInt(localStorage.getItem('soundVolume') || '100', 10);
+        if (storedVolume === 0) {
+          return;
+        }
+
         if (!audioCtx) {
           audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
@@ -309,7 +318,7 @@
         oscillator.type = localStorage.getItem('soundWaveform') || 'sine';
         oscillator.frequency.value = 700;
 
-        gainNode.gain.value = 0.05;
+        gainNode.gain.value = 0.05 * (storedVolume / 100);
 
         oscillator.start();
         oscillator.stop(audioCtx.currentTime + 0.08);
