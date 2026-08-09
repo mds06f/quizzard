@@ -292,6 +292,11 @@
         if (localStorage.getItem('soundEnabled') === 'false') {
           return;
         }
+        const storedVolume = parseInt(localStorage.getItem('soundVolume') || '100', 10);
+        if (storedVolume === 0) {
+          return;
+        }
+
         if (!audioCtx) {
           audioCtx = new (window.AudioContext || window.webkitAudioContext)();
         }
@@ -309,7 +314,7 @@
         oscillator.type = localStorage.getItem('soundWaveform') || 'sine';
         oscillator.frequency.value = 700;
 
-        gainNode.gain.value = 0.05;
+        gainNode.gain.value = 0.05 * (storedVolume / 100);
 
         oscillator.start();
         oscillator.stop(audioCtx.currentTime + 0.08);

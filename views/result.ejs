@@ -807,6 +807,11 @@
         if (localStorage.getItem('soundEnabled') === 'false') {
           return;
         }
+        const storedVolume = parseInt(localStorage.getItem('soundVolume') || '100', 10);
+        if (storedVolume === 0) {
+          return;
+        }
+
         const AudioCtx = window.AudioContext || window.webkitAudioContext;
         if (!AudioCtx) return;
         try {
@@ -819,7 +824,8 @@
             osc.frequency.value = freq;
 
             const startTime = ctx.currentTime + idx * 0.1;
-            gain.gain.setValueAtTime(0.15, startTime);
+            const volumeFactor = storedVolume / 100;
+            gain.gain.setValueAtTime(0.15 * volumeFactor, startTime);
             gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.3);
 
             osc.connect(gain);

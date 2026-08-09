@@ -178,6 +178,16 @@
             </select>
           </div>
         </div>
+
+        <div>
+          <label for="settings-volume" class="block text-[10px] font-semibold text-stone-400 mb-1.5 uppercase">Sound Volume</label>
+          <div class="flex items-center gap-3">
+            <span class="text-stone-600 text-sm">🔈</span>
+            <input type="range" id="settings-volume" min="0" max="100" class="w-full h-1 bg-stone-800 rounded-lg appearance-none cursor-pointer accent-amber-500">
+            <span class="text-stone-600 text-sm">🔊</span>
+            <span id="volume-value-label" class="text-[10px] text-stone-400 font-bold w-8 text-right">100%</span>
+          </div>
+        </div>
       </div>
 
       <!-- PWA Install Banner (Hidden by default) -->
@@ -1709,6 +1719,21 @@
         settingsWaveform.value = localStorage.getItem('soundWaveform') || 'sine';
         settingsWaveform.addEventListener('change', (e) => {
           localStorage.setItem('soundWaveform', e.target.value);
+        });
+      }
+
+      // Initialize settings volume slider
+      const settingsVolume = document.getElementById('settings-volume');
+      const volumeLabel = document.getElementById('volume-value-label');
+      if (settingsVolume) {
+        const storedVol = localStorage.getItem('soundVolume') || '100';
+        settingsVolume.value = storedVol;
+        if (volumeLabel) volumeLabel.textContent = `${storedVol}%`;
+        
+        settingsVolume.addEventListener('input', (e) => {
+          const vol = e.target.value;
+          localStorage.setItem('soundVolume', vol);
+          if (volumeLabel) volumeLabel.textContent = `${vol}%`;
         });
       }
 
