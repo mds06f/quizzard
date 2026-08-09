@@ -157,6 +157,29 @@
           <% }) %>
         </div>
       </div>
+
+      <!-- Audit Logs Panel -->
+      <div class="bg-stone-900/60 border border-stone-850 p-6 rounded-2xl shadow-xl backdrop-blur-md space-y-4">
+        <h2 class="text-sm font-bold text-stone-300 uppercase tracking-wider pb-2 border-b border-stone-850 flex items-center justify-between">
+          <span>📋 System Audit Logs</span>
+          <span class="text-[10px] text-stone-500 normal-case tracking-normal">showing latest entries</span>
+        </h2>
+        
+        <div class="space-y-2.5 max-h-[300px] overflow-y-auto pr-1">
+          <% if (typeof auditLogs !== 'undefined' && auditLogs.length > 0) { %>
+            <% auditLogs.forEach((log, idx) => { %>
+              <div class="flex justify-between items-center p-3 rounded-lg border border-stone-800 bg-stone-950/45 text-xs text-stone-300 hover:border-stone-750 transition duration-200">
+                <span class="font-mono truncate pr-3 select-all"><%= log %></span>
+                <button type="button" class="btn-copy-log text-stone-500 hover:text-amber-400 font-bold flex-shrink-0 transition" title="Copy Log Entry">
+                  📋
+                </button>
+              </div>
+            <% }) %>
+          <% } else { %>
+            <p class="text-stone-500 text-xs text-center py-6 italic">No audit log entries found.</p>
+          <% } %>
+        </div>
+      </div>
     </section>
   </main>
 
@@ -605,6 +628,32 @@
         showAdminToast(errorMsg || "An error occurred.", "error");
         window.history.replaceState({}, document.title, window.location.pathname);
       }
+
+      // Clipboard copy action for admin audit log entries
+      document.querySelectorAll('.btn-copy-log').forEach(btn => {
+        btn.addEventListener('click', async (e) => {
+          const row = e.target.closest('div');
+          const textSpan = row ? row.querySelector('span') : null;
+          if (!textSpan) return;
+
+          const textToCopy = textSpan.textContent.trim();
+          try {
+            await navigator.clipboard.writeText(textToCopy);
+            
+            // Visual feedback
+            const originalContent = btn.textContent;
+            btn.textContent = '✅';
+            row.classList.add('border-emerald-500/40', 'bg-emerald-950/10');
+            
+            setTimeout(() => {
+              btn.textContent = originalContent;
+              row.classList.remove('border-emerald-500/40', 'bg-emerald-950/10');
+            }, 2000);
+          } catch (err) {
+            console.error('Failed to copy audit log:', err);
+          }
+        });
+      });
     });
   </script>
   <!-- Dynamic Action Toast Container -->

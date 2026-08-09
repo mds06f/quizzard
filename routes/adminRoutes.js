@@ -47,7 +47,20 @@ router.get('/', isAdmin, async (req, res) => {
   try {
     const sections = await db.getAllSections();
     const questions = await db.getAllQuestions();
-    res.render('admin/dashboard', { sections, questions });
+    
+    // Read audit logs
+    const fs = require('fs');
+    const path = require('path');
+    const logPath = path.join(__dirname, '../logs/admin_audit.log');
+    let auditLogs = [];
+    if (fs.existsSync(logPath)) {
+      const content = fs.readFileSync(logPath, 'utf8');
+      auditLogs = content.trim().split('\n').filter(Boolean).map(line => {
+        return line;
+      }).reverse(); // latest first
+    }
+    
+    res.render('admin/dashboard', { sections, questions, auditLogs });
   } catch (err) {
     console.error('Error fetching admin data:', err);
     res.status(500).send('Internal Server Error');
