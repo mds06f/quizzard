@@ -104,6 +104,10 @@
       0%, 80%, 100% { transform: scale(0); opacity: 0.3; }
       40% { transform: scale(1); opacity: 1; }
     }
+    /* Smooth theme transitions */
+    body, .glass-card, h1, h2, h3, h4, p, span, label, button, input, select, textarea, .neon-border {
+      transition: background-color 300ms ease, border-color 300ms ease, color 300ms ease, box-shadow 300ms ease;
+    }
   </style>
 </head>
 <body class="bg-gradient-to-br from-[#0a0a0a] via-[#171513] to-[#0d0c0a] text-stone-100 min-h-screen flex items-center justify-center p-4 relative overflow-x-hidden">
