@@ -1418,6 +1418,42 @@
           }
         });
       });
+
+      // JWT session auto-refresh background task
+      function initJwtRefreshTimer() {
+        const token = localStorage.getItem('userToken');
+        if (!token) return;
+
+        const checkAndRefresh = async () => {
+          try {
+            const currentToken = localStorage.getItem('userToken');
+            if (!currentToken) return;
+
+            const response = await fetch('/api/auth/refresh-token', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentToken}`
+              },
+              body: JSON.stringify({ token: currentToken })
+            });
+
+            if (response.ok) {
+              const data = await response.json();
+              if (data.token) {
+                localStorage.setItem('userToken', data.token);
+                console.log('JWT Session token silently refreshed.');
+              }
+            }
+          } catch (err) {
+            console.error('Failed to auto-refresh JWT session:', err);
+          }
+        };
+
+        checkAndRefresh();
+        setInterval(checkAndRefresh, 5 * 60 * 1000);
+      }
+      initJwtRefreshTimer();
     </script>
 </body>
 
