@@ -58,11 +58,11 @@ router.get('/', isAdmin, async (req, res) => {
 router.post('/sections', isAdmin, auditLogger('CREATE_SECTION'), async (req, res) => {
   const { name } = req.body;
   if (!name || name.trim() === '') {
-    return res.redirect('/admin');
+    return res.redirect('/admin?error=invalid_topic_name');
   }
   try {
     await db.addSection(name.trim());
-    res.redirect('/admin');
+    res.redirect('/admin?success=section_created');
   } catch (err) {
     console.error(err);
     res.status(500).send('Error adding section');
@@ -75,7 +75,7 @@ router.post('/sections/:id/edit', isAdmin, auditLogger('EDIT_SECTION'), async (r
   const { name } = req.body;
   try {
     await db.updateSection(id, name.trim());
-    res.redirect('/admin');
+    res.redirect('/admin?success=section_updated');
   } catch (err) {
     console.error(err);
     res.status(500).send('Error updating section');
@@ -87,7 +87,7 @@ router.post('/sections/:id/delete', isAdmin, auditLogger('DELETE_SECTION'), asyn
   const { id } = req.params;
   try {
     await db.deleteSection(id);
-    res.redirect('/admin');
+    res.redirect('/admin?success=section_deleted');
   } catch (err) {
     console.error(err);
     res.status(500).send('Error deleting section');
@@ -109,7 +109,7 @@ router.post('/questions', isAdmin, auditLogger('CREATE_QUESTION'), async (req, r
       explanation: explanation ? explanation.trim() : '',
       category: category ? category.trim() : ''
     });
-    res.redirect('/admin');
+    res.redirect('/admin?success=question_created');
   } catch (err) {
     console.error(err);
     res.status(500).send('Error adding question');
@@ -132,7 +132,7 @@ router.post('/questions/:id/edit', isAdmin, auditLogger('EDIT_QUESTION'), async 
       explanation: explanation ? explanation.trim() : '',
       category: category ? category.trim() : ''
     });
-    res.redirect('/admin');
+    res.redirect('/admin?success=question_updated');
   } catch (err) {
     console.error(err);
     res.status(500).send('Error updating question');
@@ -144,7 +144,7 @@ router.post('/questions/:id/delete', isAdmin, auditLogger('DELETE_QUESTION'), as
   const { id } = req.params;
   try {
     await db.deleteQuestion(id);
-    res.redirect('/admin');
+    res.redirect('/admin?success=question_deleted');
   } catch (err) {
     console.error(err);
     res.status(500).send('Error deleting question');
@@ -277,7 +277,7 @@ router.post('/import-questions', isAdmin, upload.single('csvFile'), async (req, 
       });
     }
     
-    res.redirect('/admin');
+    res.redirect('/admin?success=questions_imported');
   } catch (err) {
     console.error('Error importing questions:', err);
     res.status(500).send('Error importing questions');
