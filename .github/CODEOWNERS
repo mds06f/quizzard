@@ -1,0 +1,53 @@
+# ==============================================================================
+# Quizzard CODEOWNERS Matrix
+# ==============================================================================
+# This file governs the automated assignment of PR reviewers based on the
+# specific directories and files being modified.
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# 1. Global / Fallback Owner
+# ------------------------------------------------------------------------------
+# All files and directories not explicitly overridden below will default to
+# the primary maintainer for architectural review.
+*       @sandipanxd
+
+# ------------------------------------------------------------------------------
+# 2. Backend & Infrastructure
+# ------------------------------------------------------------------------------
+/server.js                  @sandipanxd
+/db.js                      @sandipanxd
+/package.json               @sandipanxd
+/package-lock.json          @sandipanxd
+/render.yaml                @sandipanxd
+/playwright.config.js       @sandipanxd
+/.github/                   @sandipanxd
+
+# ------------------------------------------------------------------------------
+# 3. Routes & Middleware
+# ------------------------------------------------------------------------------
+/routes/                    @sandipanxd
+/middleware/                @sandipanxd
+/services/                  @sandipanxd
+
+# ------------------------------------------------------------------------------
+# 4. Frontend (Views & Public Assets)
+# ------------------------------------------------------------------------------
+/views/                     @sandipanxd
+/public/                    @sandipanxd
+
+# ------------------------------------------------------------------------------
+# 5. Testing Suite
+# ------------------------------------------------------------------------------
+/tests/                     @sandipanxd
+/scripts/                   @sandipanxd
+
+# ------------------------------------------------------------------------------
+# 6. Documentation & Guidelines
+# ------------------------------------------------------------------------------
+/README.md                  @sandipanxd
+/ARCHITECTURE.md            @sandipanxd
+/CONTRIBUTING.md            @sandipanxd
+/CODE_OF_CONDUCT.md         @sandipanxd
+/SECURITY.md                @sandipanxd
+/ISSUES.md                  @sandipanxd
