@@ -166,5 +166,7 @@ module.exports = {
   get,
   set,
   del,
-  invalidateQuizCaches
+  invalidateQuizCaches,
+  getRedisClient: () => redisClient,
+  isRedisConnected: () => isRedisConnected
 };
