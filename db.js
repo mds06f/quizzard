@@ -209,24 +209,39 @@ const db = {
   },
 
   // Add Section
-  addSection: async (name) => {
+  addSection: async (name, tags = '') => {
     const data = readData();
     const newSection = {
       id: data.sections.length > 0 ? Math.max(...data.sections.map(s => s.id)) + 1 : 1,
-      name: name
+      name: name,
+      tags: tags
     };
     data.sections.push(newSection);
     writeData(data);
     return newSection;
   },
 
+  // Update Section Tags
+  updateSectionTags: async (id, tags) => {
+    const data = readData();
+    const sectionId = parseInt(id, 10);
+    const section = data.sections.find(s => s.id === sectionId);
+    if (section) {
+      section.tags = tags;
+      writeData(data);
+      return section;
+    }
+    throw new Error('Section not found');
+  },
+
   // Update Section
-  updateSection: async (id, name) => {
+  updateSection: async (id, name, tags) => {
     const data = readData();
     const sectionId = parseInt(id, 10);
     const section = data.sections.find(s => s.id === sectionId);
     if (section) {
       section.name = name;
+      if (tags !== undefined) section.tags = tags;
       writeData(data);
       return section;
     }

@@ -125,12 +125,12 @@ router.get('/', isAdmin, async (req, res) => {
 
 // POST add new section
 router.post('/sections', isAdmin, auditLogger('CREATE_SECTION'), async (req, res) => {
-  const { name } = req.body;
+  const { name, tags } = req.body;
   if (!name || name.trim() === '') {
     return res.redirect('/admin?error=invalid_topic_name');
   }
   try {
-    await db.addSection(name.trim());
+    await db.addSection(name.trim(), tags ? tags.trim() : '');
     res.redirect('/admin?success=section_created');
   } catch (err) {
     console.error(err);
@@ -141,13 +141,26 @@ router.post('/sections', isAdmin, auditLogger('CREATE_SECTION'), async (req, res
 // POST edit section
 router.post('/sections/:id/edit', isAdmin, auditLogger('EDIT_SECTION'), async (req, res) => {
   const { id } = req.params;
-  const { name } = req.body;
+  const { name, tags } = req.body;
   try {
-    await db.updateSection(id, name.trim());
+    await db.updateSection(id, name.trim(), tags !== undefined ? tags.trim() : undefined);
     res.redirect('/admin?success=section_updated');
   } catch (err) {
     console.error(err);
     res.status(500).send('Error updating section');
+  }
+});
+
+// POST update section tags only
+router.post('/sections/:id/tags', isAdmin, auditLogger('UPDATE_SECTION_TAGS'), async (req, res) => {
+  const { id } = req.params;
+  const { tags } = req.body;
+  try {
+    await db.updateSectionTags(id, tags ? tags.trim() : '');
+    res.json({ success: true });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Failed to update tags' });
   }
 });
 
