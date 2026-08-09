@@ -921,12 +921,50 @@
     }
 
     if (btnClearHistory) {
+      const modal = document.getElementById('clear-confirm-modal');
+      const inner = modal ? modal.querySelector('.glass-card') : null;
+      const btnCancel = document.getElementById('btn-clear-cancel');
+      const btnConfirm = document.getElementById('btn-clear-confirm');
+
+      function openClearModal() {
+        if (!modal || !inner) return;
+        modal.classList.remove('hidden');
+        setTimeout(() => {
+          inner.classList.remove('scale-95', 'opacity-0');
+        }, 10);
+      }
+
+      function closeClearModal() {
+        if (!modal || !inner) return;
+        inner.classList.add('scale-95', 'opacity-0');
+        setTimeout(() => {
+          modal.classList.add('hidden');
+        }, 300);
+      }
+
       btnClearHistory.addEventListener('click', () => {
-        if (confirm("Are you sure you want to clear your quiz history?")) {
+        openClearModal();
+      });
+
+      if (btnCancel) {
+        btnCancel.addEventListener('click', closeClearModal);
+      }
+
+      if (btnConfirm) {
+        btnConfirm.addEventListener('click', () => {
           localStorage.removeItem('quizHistory');
           renderHistory();
-        }
-      });
+          closeClearModal();
+        });
+      }
+
+      if (modal) {
+        modal.addEventListener('click', (e) => {
+          if (e.target === modal) {
+            closeClearModal();
+          }
+        });
+      }
     }
 
     // Char counter
@@ -1891,5 +1929,23 @@
       loadSections();
     });
   </script>
+  <!-- Custom Confirmation Modal -->
+  <div id="clear-confirm-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm transition duration-300">
+    <div class="glass-card max-w-sm w-full rounded-2xl border border-stone-850 p-6 space-y-6 text-center shadow-2xl transform scale-95 opacity-0 transition duration-300">
+      <div class="text-4xl">⚠️</div>
+      <div class="space-y-2">
+        <h3 class="text-lg font-bold text-white">Clear Study History?</h3>
+        <p class="text-xs text-stone-400">Are you sure you want to clear your study progress history? This action is permanent and cannot be undone.</p>
+      </div>
+      <div class="flex gap-3">
+        <button id="btn-clear-cancel" type="button" class="w-full bg-stone-900 border border-stone-800 text-stone-300 hover:text-white font-semibold py-2.5 px-4 rounded-lg text-xs transition active:scale-[0.98]">
+          Cancel
+        </button>
+        <button id="btn-clear-confirm" type="button" class="w-full bg-gradient-to-r from-red-600 to-orange-600 hover:from-red-500 hover:to-orange-500 text-white font-bold py-2.5 px-4 rounded-lg text-xs shadow-lg active:scale-[0.98] transition">
+          Clear History
+        </button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
