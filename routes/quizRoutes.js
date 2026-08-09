@@ -7,6 +7,11 @@ const { PDFParse } = require('pdf-parse');
 const cacheService = require('../services/cacheService');
 const { aiRateLimiter } = require('../middleware/rateLimiter');
 
+const validateUsername = (userName) => {
+  if (!userName || typeof userName !== 'string') return false;
+  return /^[a-zA-Z0-9]{3,15}$/.test(userName);
+};
+
 const upload = multer({
   limits: { fileSize: 5 * 1024 * 1024 } // 5MB limit
 });
@@ -152,6 +157,10 @@ router.post('/submit', async (req, res) => {
 router.post('/save-result', async (req, res) => {
   const { userName, sectionId, result } = req.body;
 
+  if (!validateUsername(userName)) {
+    return res.status(400).json({ error: 'Username must be 3-15 alphanumeric characters.' });
+  }
+
   try {
     await db.saveResult(userName, sectionId, result.score, result.total);
     res.status(200).json({ message: 'Results saved successfully' });
@@ -163,6 +172,11 @@ router.post('/save-result', async (req, res) => {
 
 router.post('/save-challenge', async (req, res) => {
   const { userName, sectionId, result, timeMs } = req.body;
+  
+  if (!validateUsername(userName)) {
+    return res.status(400).json({ error: 'Username must be 3-15 alphanumeric characters.' });
+  }
+
   try {
     await db.saveChallengeResult(userName, sectionId, result.score, result.total, timeMs);
     res.status(200).json({ message: 'Challenge result saved successfully' });
@@ -243,6 +257,10 @@ router.get('/questions/custom-mix', async (req, res) => {
 router.post('/generate-ai', aiRateLimiter, upload.single('file'), async (req, res) => {
   const { text, difficulty, userName, numQuestions } = req.body;
   const file = req.file;
+
+  if (!validateUsername(userName)) {
+    return res.status(400).json({ error: 'Username must be 3-15 alphanumeric characters.' });
+  }
 
   let notesText = '';
 
@@ -361,6 +379,9 @@ router.post('/user/sync', async (req, res) => {
 
   try {
     for (const attempt of attempts) {
+      if (!validateUsername(attempt.userName)) {
+        return res.status(400).json({ error: 'Invalid username in sync payload: must be 3-15 alphanumeric characters.' });
+      }
       await db.saveResult(attempt.userName, attempt.sectionId, attempt.score, attempt.total);
     }
     res.status(200).json({ message: 'Offline quiz results synced successfully.' });

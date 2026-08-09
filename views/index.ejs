@@ -280,6 +280,9 @@
           </button>
         </div>
       </form>
+      <footer class="mt-8 text-center text-xs text-stone-500 tracking-wide">
+        <p>&copy; <%= new Date().getFullYear() %> Quizzard. All rights reserved.</p>
+      </footer>
     </div>
 
     <script>
@@ -1355,6 +1358,17 @@
           }
 
           const key = e.key;
+
+          if (key === 'Escape') {
+            const pauseModal = document.getElementById('pause-modal');
+            if (pauseModal && !pauseModal.classList.contains('hidden')) {
+              togglePauseQuiz();
+            }
+            const preSubmitModal = document.getElementById('pre-submit-modal');
+            if (preSubmitModal && !preSubmitModal.classList.contains('hidden')) {
+              closePreSubmitModal();
+            }
+          }
 
           if (['1', '2', '3', '4'].includes(key)) {
             const optionIndex = parseInt(key, 10) - 1;

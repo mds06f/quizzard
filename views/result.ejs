@@ -121,7 +121,7 @@
         background: #ffffff !important;
         color: #000000 !important;
       }
-      #theme-toggle, #scroll-to-top-btn, #btn-review, #btn-bookmarks, #btn-share, #btn-print-results, #btn-reset-cache, a[href="/"] {
+      #theme-toggle, #scroll-to-top-btn, #btn-review, #btn-bookmarks, #btn-share, #btn-print-results, #btn-export-txt, #btn-reset-cache, a[href="/"] {
         display: none !important;
       }
       .glass-card {
@@ -249,6 +249,10 @@
           class="bg-stone-900/80 border border-stone-800 text-stone-300 hover:text-white font-semibold p-3.5 rounded-lg transition duration-300 hover:border-amber-500/50 active:scale-[0.99] flex items-center justify-center gap-2">
           🖨️ Print / Save PDF
         </button>
+        <button id="btn-export-txt" onclick="exportResultsToTxt()" type="button"
+          class="bg-stone-900/80 border border-stone-800 text-stone-300 hover:text-white font-semibold p-3.5 rounded-lg transition duration-300 hover:border-amber-500/50 active:scale-[0.99] flex items-center justify-center gap-2">
+          📥 Export to Text (.txt)
+        </button>
         <% if (score < total) { %>
           <button id="btn-retry-missed" onclick="retryMissedQuestions()" type="button"
             class="sm:col-span-2 bg-gradient-to-r from-red-600 to-amber-600 hover:from-red-500 hover:to-amber-500 text-white font-bold p-3.5 rounded-lg shadow-lg active:scale-[0.99] transition duration-300 flex items-center justify-center gap-2 cursor-pointer">
@@ -299,10 +303,71 @@
         </div>
       </div>
 
+      <footer class="mt-8 text-center text-xs text-stone-500 tracking-wide">
+        <p>&copy; <%= new Date().getFullYear() %> Quizzard. All rights reserved.</p>
+      </footer>
     </div>
   </div>
 
   <script>
+    let activeQuestions = [];
+
+    function exportResultsToTxt() {
+      const userName = window.localStorage.getItem('userName') || 'anonymous';
+      const urlParams = new URLSearchParams(window.location.search);
+      const difficulty = window.localStorage.getItem('difficulty') || 'medium';
+      
+      let txtContent = `=========================================\n`;
+      txtContent += `       QUIZZARD RESULTS SUMMARY          \n`;
+      txtContent += `=========================================\n\n`;
+      txtContent += `User: ${userName}\n`;
+      txtContent += `Date: ${new Date().toLocaleString()}\n`;
+      txtContent += `Difficulty: ${difficulty.toUpperCase()}\n`;
+      txtContent += `Score: <%= score %> / <%= total %> (${Math.round((parseInt('<%= score %>', 10) / parseInt('<%= total %>', 10)) * 100)}%)\n\n`;
+      
+      if (activeQuestions && activeQuestions.length > 0) {
+        txtContent += `-----------------------------------------\n`;
+        txtContent += `             QUESTIONS REVIEW            \n`;
+        txtContent += `-----------------------------------------\n\n`;
+        
+        const userAnswers = JSON.parse(window.localStorage.getItem('userAnswers') || '{}');
+        activeQuestions.forEach((q, index) => {
+          const selectedOption = parseInt(userAnswers[`question-${q.id}`], 10);
+          const isCorrect = (selectedOption === q.correct_option);
+          
+          txtContent += `${index + 1}. Question: ${q.question}\n`;
+          txtContent += `   Options:\n`;
+          txtContent += `     [1] ${q.option1}\n`;
+          txtContent += `     [2] ${q.option2}\n`;
+          txtContent += `     [3] ${q.option3}\n`;
+          txtContent += `     [4] ${q.option4}\n`;
+          txtContent += `   Your Answer: Option ${selectedOption || 'unanswered'}\n`;
+          txtContent += `   Correct Answer: Option ${q.correct_option}\n`;
+          txtContent += `   Result: ${isCorrect ? '✅ CORRECT' : '❌ INCORRECT'}\n`;
+          if (q.explanation) {
+            txtContent += `   Explanation: ${q.explanation}\n`;
+          }
+          txtContent += `\n`;
+        });
+      } else {
+        txtContent += `No question details available for review.\n`;
+      }
+      
+      txtContent += `=========================================\n`;
+      txtContent += `Thank you for studying with Quizzard! 🧙‍♂️\n`;
+      txtContent += `=========================================\n`;
+
+      const blob = new Blob([txtContent], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `quizzard_result_${new Date().toISOString().slice(0,10)}.txt`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+
     document.addEventListener('DOMContentLoaded', () => {
       // Streak Calculation
       function getLocalDateString() {
@@ -517,6 +582,7 @@
             const response = await fetch(`/api/quiz/questions/${sectionId}/${difficulty}`);
             questions = await response.json();
           }
+          activeQuestions = questions;
 
           const userAnswers = JSON.parse(window.localStorage.getItem('userAnswers') || '{}');
 
@@ -872,6 +938,12 @@
     function closeAiTutorDrawer() {
       document.getElementById('ai-tutor-drawer').classList.add('translate-x-full');
     }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeAiTutorDrawer();
+      }
+    });
 
     async function sendTutorQuery() {
       const input = document.getElementById('tutor-user-input');
