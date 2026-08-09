@@ -498,13 +498,20 @@
 
       function autosaveQuizState() {
         try {
+          const topicName = document.getElementById('section-name-display')?.textContent || 'Custom AI Quiz';
           const state = {
+            sectionId: window.localStorage.getItem('sectionId'),
+            userName: window.localStorage.getItem('userName'),
+            difficulty: window.localStorage.getItem('difficulty'),
+            challengeMode: window.localStorage.getItem('challengeMode'),
+            specialMode: window.localStorage.getItem('specialMode'),
+            topicName: topicName,
             index: currentQuestionIndex,
             streak: currentSessionStreak,
             answers: answersSubmitted,
             timestamp: Date.now()
           };
-          sessionStorage.setItem('active_quiz_autosave', JSON.stringify(state));
+          localStorage.setItem('quizzard_active_draft', JSON.stringify(state));
         } catch(e) {}
       }
 
@@ -785,8 +792,44 @@
         loadingElem.classList.add('hidden');
         quizForm.classList.remove('hidden');
 
+        let startIdx = 0;
+        const draftStr = localStorage.getItem('quizzard_active_draft');
+        if (draftStr) {
+          try {
+            const draft = JSON.parse(draftStr);
+            if (String(draft.sectionId) === String(sectionId) && draft.difficulty === difficulty) {
+              startIdx = draft.index || 0;
+              currentSessionStreak = draft.streak || 0;
+              Object.assign(answersSubmitted, draft.answers || {});
+              
+              // Apply radio checked state
+              questionsData.forEach((q, idx) => {
+                const ans = answersSubmitted[`question-${q.id}`];
+                if (ans !== null && ans !== undefined) {
+                  const qElem = document.querySelector(`#quiz-container > div[data-question-index="${idx}"]`);
+                  if (qElem) {
+                    const radio = qElem.querySelector(`input[value="${ans}"]`);
+                    if (radio) radio.checked = true;
+                  }
+                }
+              });
+            }
+          } catch(e) {
+            console.error('Failed to restore quiz draft:', e);
+          }
+        }
+
+        // Restore visual state for all answered questions
+        for (let idx = 0; idx < totalQuestions; idx++) {
+          const q = questionsData[idx];
+          const ans = answersSubmitted[`question-${q.id}`];
+          if (ans !== null && ans !== undefined) {
+            lockQuestion(idx, ans);
+          }
+        }
+
         if (totalQuestions > 0) {
-          startQuestion(0);
+          startQuestion(startIdx);
         }
       }
 
@@ -969,6 +1012,7 @@
 
           if (isReview) {
             window.localStorage.setItem('userAnswers', JSON.stringify(data));
+            localStorage.removeItem('quizzard_active_draft');
             window.location.href = `/result?score=${result.score}&total=${result.total}&review=true`;
           } else if (isChallenge && quizStartTime) {
             const elapsed = Date.now() - quizStartTime;
@@ -982,6 +1026,7 @@
             
             // Save answers and redirect with challenge flag
             window.localStorage.setItem('userAnswers', JSON.stringify(data));
+            localStorage.removeItem('quizzard_active_draft');
             window.location.href = `/result?score=${result.score}&total=${result.total}&sectionId=${sectionId}&challenge=true&timeMs=${elapsed}`;
           } else {
             // Save standard score
@@ -993,6 +1038,7 @@
 
             // Save user answers for explanations review
             window.localStorage.setItem('userAnswers', JSON.stringify(data));
+            localStorage.removeItem('quizzard_active_draft');
             window.location.href = `/result?score=${result.score}&total=${result.total}&sectionId=${sectionId}`;
           }
         } catch (err) {
