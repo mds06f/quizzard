@@ -82,6 +82,29 @@ router.get('/', isAdmin, async (req, res) => {
         return line;
       }).reverse(); // latest first
     }
+
+    // Fetch Redis rate limiting metrics
+    const cacheService = require('../services/cacheService');
+    let rateLimitMetrics = { hits: 0, blocks: 0 };
+    let rateLimitIps = [];
+
+    if (cacheService.isRedisConnected()) {
+      const redis = cacheService.getRedisClient();
+      try {
+        const today = new Date().toISOString().slice(0, 10);
+        const metrics = await redis.hgetall(`ratelimit:metrics:${today}`);
+        rateLimitMetrics.hits = parseInt(metrics.hits) || 0;
+        rateLimitMetrics.blocks = parseInt(metrics.blocks) || 0;
+
+        const ips = await redis.hgetall(`ratelimit:ips:${today}`);
+        rateLimitIps = Object.entries(ips).map(([ip, count]) => ({
+          ip,
+          count: parseInt(count)
+        })).sort((a, b) => b.count - a.count).slice(0, 5);
+      } catch (err) {
+        console.warn('Failed to fetch rate limit metrics from Redis:', err.message);
+      }
+    }
     
     res.render('admin/dashboard', { 
       sections, 
@@ -90,7 +113,9 @@ router.get('/', isAdmin, async (req, res) => {
       currentPage,
       totalPages,
       search,
-      totalQuestions
+      totalQuestions,
+      rateLimitMetrics,
+      rateLimitIps
     });
   } catch (err) {
     console.error('Error fetching admin data:', err);

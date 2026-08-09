@@ -97,6 +97,41 @@
             </button>
           </form>
         </div>
+
+        <!-- Redis Rate Limiting Metrics Panel -->
+        <div class="bg-stone-900/60 border border-stone-850 p-6 rounded-2xl shadow-xl backdrop-blur-md space-y-4">
+          <h2 class="text-sm font-bold text-stone-300 uppercase tracking-wider pb-2 border-b border-stone-850 flex items-center justify-between">
+            <span>🛡️ Rate Limiting Metrics</span>
+            <span class="text-[9px] px-2 py-0.5 rounded bg-emerald-950/50 border border-emerald-500/20 text-emerald-400 font-mono">Redis Active</span>
+          </h2>
+          
+          <div class="grid grid-cols-2 gap-3">
+            <div class="p-3 bg-stone-950/40 border border-stone-850 rounded-xl text-center">
+              <span class="text-[10px] text-stone-500 uppercase font-semibold">Total Hits</span>
+              <p class="text-lg font-bold text-amber-500 mt-1"><%= typeof rateLimitMetrics !== 'undefined' ? rateLimitMetrics.hits : 0 %></p>
+            </div>
+            <div class="p-3 bg-stone-950/40 border border-stone-850 rounded-xl text-center">
+              <span class="text-[10px] text-stone-500 uppercase font-semibold">Blocked Requests</span>
+              <p class="text-lg font-bold text-red-500 mt-1"><%= typeof rateLimitMetrics !== 'undefined' ? rateLimitMetrics.blocks : 0 %></p>
+            </div>
+          </div>
+
+          <div class="space-y-2">
+            <span class="text-[10px] text-stone-500 uppercase font-bold tracking-wide">Top Traffic IPs</span>
+            <div class="space-y-1.5">
+              <% if (typeof rateLimitIps !== 'undefined' && rateLimitIps.length > 0) { %>
+                <% rateLimitIps.forEach(item => { %>
+                  <div class="flex justify-between items-center px-2.5 py-1.5 rounded bg-stone-950/50 border border-stone-850 text-[11px]">
+                    <span class="font-mono text-stone-400"><%= item.ip %></span>
+                    <span class="font-bold text-stone-200"><%= item.count %> hits</span>
+                  </div>
+                <% }) %>
+              <% } else { %>
+                <p class="text-stone-600 text-[10px] italic py-2 text-center">No hit data logged for today.</p>
+              <% } %>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
