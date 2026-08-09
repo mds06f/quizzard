@@ -542,6 +542,12 @@
           <button id="btn-start-review" type="button" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-semibold py-3 px-4 rounded-lg shadow-lg active:scale-[0.99] transition duration-300 flex items-center justify-center gap-2">
             🚀 Start Spaced Review
           </button>
+          <div class="pt-4 border-t border-stone-850/50 mt-4 flex items-center justify-between">
+            <span class="text-stone-400 text-xs font-semibold">Review Notifications</span>
+            <button id="btn-request-notifications" type="button" class="bg-stone-800 hover:bg-stone-750 text-stone-300 hover:text-white px-3 py-1.5 rounded-lg text-[10px] font-bold border border-stone-700 transition">
+              🔔 Enable Notifications
+            </button>
+          </div>
         </div>
 
         <!-- Mastery Board Visualization -->
@@ -841,6 +847,9 @@
         if (totalEl) totalEl.textContent = data.total;
         if (masteredEl) masteredEl.textContent = data.mastered;
         if (avgEfEl) avgEfEl.textContent = Number(data.avgEase).toFixed(2);
+        
+        // Trigger background reviews scheduling check
+        if (window.scheduleReviewsCheck) window.scheduleReviewsCheck();
       } catch (err) {
         console.error("Error loading mastery board details:", err);
       }
@@ -2005,6 +2014,47 @@
         
         window.location.href = `/quiz?review=true`;
       });
+
+      // Request notifications permission and register scheduling
+      const btnRequestNotifications = document.getElementById('btn-request-notifications');
+      
+      window.scheduleReviewsCheck = function() {
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+        if (!navigator.serviceWorker || !navigator.serviceWorker.controller) return;
+        
+        const dueCount = activeDueIds.length;
+        if (dueCount > 0) {
+          navigator.serviceWorker.controller.postMessage({
+            type: 'SCHEDULE_REVIEWS_CHECK',
+            nextDueTime: Date.now(), // Trigger notification check
+            dueCount: dueCount
+          });
+        }
+      };
+
+      if (btnRequestNotifications) {
+        if (Notification.permission === 'granted') {
+          btnRequestNotifications.textContent = '✅ Notifications Enabled';
+          btnRequestNotifications.disabled = true;
+          btnRequestNotifications.className = "bg-emerald-950/40 text-emerald-400 px-3 py-1.5 rounded-lg text-[10px] font-bold border border-emerald-500/20";
+        }
+        
+        btnRequestNotifications.addEventListener('click', async () => {
+          if (!('Notification' in window)) {
+            alert('Notifications are not supported in this browser.');
+            return;
+          }
+          const permission = await Notification.requestPermission();
+          if (permission === 'granted') {
+            btnRequestNotifications.textContent = '✅ Notifications Enabled';
+            btnRequestNotifications.disabled = true;
+            btnRequestNotifications.className = "bg-emerald-950/40 text-emerald-400 px-3 py-1.5 rounded-lg text-[10px] font-bold border border-emerald-500/20";
+            window.scheduleReviewsCheck();
+          } else if (permission === 'denied') {
+            alert('Notification permission denied. Please reset permissions in your browser address bar.');
+          }
+        });
+      }
 
       loadSections();
     });
