@@ -978,7 +978,7 @@
              if (!payload || typeof payload !== 'object' || !payload.quizHistory) {
                throw new Error("Invalid structure");
              }
-             if (payload.quizHistory) localStorage.setItem('quizHistory', JSON.stringify(payload.quizHistory));
+             if (payload.quizHistory) localStorage.setItem('quizHistory', JSON.stringify(payload.quizHistory.slice(0, 50)));
              if (payload.sm2Data) localStorage.setItem('sm2Data', JSON.stringify(payload.sm2Data));
              if (payload.userName) localStorage.setItem('userName', payload.userName);
              if (payload.soundEnabled !== undefined) localStorage.setItem('soundEnabled', payload.soundEnabled);
@@ -1840,7 +1840,7 @@
             const data = await response.json();
             const payload = data.payload;
             if (payload) {
-              if (payload.quizHistory) localStorage.setItem('quizHistory', JSON.stringify(payload.quizHistory));
+              if (payload.quizHistory) localStorage.setItem('quizHistory', JSON.stringify(payload.quizHistory.slice(0, 50)));
               if (payload.sm2Data) localStorage.setItem('sm2Data', JSON.stringify(payload.sm2Data));
               if (payload.streakData) localStorage.setItem('streakData', JSON.stringify(payload.streakData));
               if (payload.userName) localStorage.setItem('userName', payload.userName);
