@@ -1252,9 +1252,8 @@
       
       const allTagsSet = new Set(['All']);
       allSectionsList.forEach(section => {
-        if (section.tags && Array.isArray(section.tags)) {
-          section.tags.forEach(t => allTagsSet.add(t));
-        }
+        const tagsArr = section.tags ? section.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+        tagsArr.forEach(t => allTagsSet.add(t));
       });
       
       pillsContainer.innerHTML = '';
@@ -1290,7 +1289,8 @@
       sectionSelect.innerHTML = '<option value="" disabled selected class="bg-stone-950 text-stone-400">Select a section</option>';
       
       const filtered = allSectionsList.filter(section => {
-        const matchesTag = selectedActiveTag === 'All' || (section.tags && section.tags.includes(selectedActiveTag));
+        const tagsArr = section.tags ? section.tags.split(',').map(t => t.trim()).filter(Boolean) : [];
+        const matchesTag = selectedActiveTag === 'All' || tagsArr.includes(selectedActiveTag);
         const matchesQuery = section.name.toLowerCase().includes(searchVal);
         return matchesTag && matchesQuery;
       });

@@ -59,17 +59,27 @@
           </div>
         </div>
 
-        <div class="space-y-2 max-h-[350px] overflow-y-auto pr-1">
+        <div class="space-y-2 max-h-[420px] overflow-y-auto pr-1">
           <% sections.forEach(section => { %>
-            <div class="group flex justify-between items-center p-3 rounded-lg border border-stone-800 bg-stone-950/40 hover:border-stone-750 hover:bg-stone-950/60 transition cursor-pointer"
+            <div class="group p-3 rounded-lg border border-stone-800 bg-stone-950/40 hover:border-stone-750 hover:bg-stone-950/60 transition cursor-pointer space-y-2"
                  onclick="selectSection('<%= section.id %>')">
-              <span class="text-sm font-medium text-stone-200 truncate pr-2"><%= section.name %></span>
-              <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition duration-200">
-                <button onclick="e => e.stopPropagation(); editSection('<%= section.id %>', '<%= section.name %>')" class="text-xs text-stone-400 hover:text-amber-400 transition" title="Rename">✏️</button>
-                <form action="/admin/sections/<%= section.id %>/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this topic and all its questions?')" class="inline">
-                  <button type="submit" onclick="e => e.stopPropagation()" class="text-xs text-stone-400 hover:text-red-400 transition" title="Delete">🗑️</button>
-                </form>
+              <div class="flex justify-between items-center">
+                <span class="text-sm font-medium text-stone-200 truncate pr-2"><%= section.name %></span>
+                <div class="flex gap-2 opacity-0 group-hover:opacity-100 transition duration-200 flex-shrink-0">
+                  <button type="button" onclick="event.stopPropagation(); editSection('<%= section.id %>', '<%= section.name %>')" class="text-xs text-stone-400 hover:text-amber-400 transition" title="Rename">✏️</button>
+                  <button type="button" onclick="event.stopPropagation(); openTagModal('<%= section.id %>', '<%= section.name %>', '<%= (section.tags || '').replace(/'/g, '&#39;') %>')" class="text-xs text-stone-400 hover:text-sky-400 transition" title="Manage Tags">🏷️</button>
+                  <form action="/admin/sections/<%= section.id %>/delete" method="POST" onsubmit="return confirm('Are you sure you want to delete this topic and all its questions?')" class="inline">
+                    <button type="submit" onclick="event.stopPropagation()" class="text-xs text-stone-400 hover:text-red-400 transition" title="Delete">🗑️</button>
+                  </form>
+                </div>
               </div>
+              <% if (section.tags && section.tags.trim()) { %>
+                <div class="flex flex-wrap gap-1" onclick="event.stopPropagation()">
+                  <% section.tags.split(',').filter(t => t.trim()).forEach(tag => { %>
+                    <span class="inline-block px-2 py-0.5 rounded-full text-[9px] font-bold bg-sky-950/60 text-sky-400 border border-sky-500/20"><%= tag.trim() %></span>
+                  <% }) %>
+                </div>
+              <% } %>
             </div>
           <% }) %>
         </div>
@@ -280,10 +290,37 @@
           <label for="section-name" class="block text-xs font-semibold text-stone-400 mb-2 uppercase tracking-wide">Topic Name</label>
           <input type="text" id="section-name" name="name" required class="w-full p-2.5 bg-stone-950 border border-stone-800 focus:border-amber-500 focus:outline-none rounded-lg text-sm text-stone-200">
         </div>
+        <div>
+          <label for="section-tags" class="block text-xs font-semibold text-stone-400 mb-2 uppercase tracking-wide">Category Tags <span class="text-stone-600 font-normal normal-case">(comma-separated, e.g. Science, Biology)</span></label>
+          <input type="text" id="section-tags" name="tags" placeholder="e.g. Science, Programming, Humanities" class="w-full p-2.5 bg-stone-950 border border-stone-800 focus:border-sky-500 focus:outline-none rounded-lg text-sm text-stone-200">
+        </div>
         <button type="submit" class="w-full bg-amber-600 hover:bg-amber-500 text-white font-semibold py-2 px-4 rounded-lg shadow text-sm transition">
           Create Topic
         </button>
       </form>
+    </div>
+  </div>
+
+  <!-- Tag Management Modal -->
+  <div id="tag-modal" class="hidden fixed inset-0 z-50 bg-stone-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+    <div class="max-w-md w-full bg-stone-900 border border-stone-800 rounded-2xl p-6 shadow-2xl space-y-4">
+      <div class="flex justify-between items-center pb-2 border-b border-stone-850">
+        <h3 class="text-sm font-bold text-stone-200 uppercase tracking-wider">🏷️ Manage Tags</h3>
+        <button onclick="closeTagModal()" class="text-stone-500 hover:text-stone-300">✕</button>
+      </div>
+      <p id="tag-modal-section-name" class="text-xs text-stone-400"></p>
+      <div class="space-y-3">
+        <div>
+          <label class="block text-xs font-semibold text-stone-400 mb-1.5 uppercase tracking-wide">Tags <span class="text-stone-600 font-normal normal-case">(comma-separated)</span></label>
+          <input type="text" id="tag-modal-input" placeholder="e.g. Science, Biology, Medium" class="w-full p-2.5 bg-stone-950 border border-stone-800 focus:border-sky-500 focus:outline-none rounded-lg text-sm text-stone-200">
+        </div>
+        <div id="tag-modal-preview" class="flex flex-wrap gap-1 min-h-[24px]"></div>
+        <div class="text-[10px] text-stone-600 italic">Presets: <span class="cursor-pointer text-stone-400 hover:text-sky-400" onclick="appendPresetTag('Science')">Science</span>, <span class="cursor-pointer text-stone-400 hover:text-sky-400" onclick="appendPresetTag('Programming')">Programming</span>, <span class="cursor-pointer text-stone-400 hover:text-sky-400" onclick="appendPresetTag('Humanities')">Humanities</span>, <span class="cursor-pointer text-stone-400 hover:text-sky-400" onclick="appendPresetTag('Mathematics')">Mathematics</span>, <span class="cursor-pointer text-stone-400 hover:text-sky-400" onclick="appendPresetTag('History')">History</span>, <span class="cursor-pointer text-stone-400 hover:text-sky-400" onclick="appendPresetTag('Geography')">Geography</span></div>
+      </div>
+      <div class="flex gap-3">
+        <button onclick="closeTagModal()" class="flex-1 bg-stone-850 hover:bg-stone-800 text-stone-300 font-semibold py-2 px-4 rounded-lg border border-stone-800 text-sm transition">Cancel</button>
+        <button onclick="saveTagModal()" class="flex-1 bg-sky-600 hover:bg-sky-500 text-white font-semibold py-2 px-4 rounded-lg shadow text-sm transition">💾 Save Tags</button>
+      </div>
     </div>
   </div>
 
@@ -468,6 +505,59 @@
       form.action = `/admin/sections/${id}/edit`;
       input.value = name;
       modal.classList.remove('hidden');
+    }
+
+    let _tagModalSectionId = null;
+
+    function openTagModal(sectionId, sectionName, currentTags) {
+      _tagModalSectionId = sectionId;
+      document.getElementById('tag-modal-section-name').textContent = `Topic: ${sectionName}`;
+      const input = document.getElementById('tag-modal-input');
+      input.value = currentTags || '';
+      updateTagPreview(currentTags);
+      document.getElementById('tag-modal').classList.remove('hidden');
+      input.addEventListener('input', () => updateTagPreview(input.value));
+    }
+
+    function closeTagModal() {
+      document.getElementById('tag-modal').classList.add('hidden');
+      _tagModalSectionId = null;
+    }
+
+    function updateTagPreview(rawTags) {
+      const preview = document.getElementById('tag-modal-preview');
+      const tags = (rawTags || '').split(',').map(t => t.trim()).filter(Boolean);
+      preview.innerHTML = tags.map(t => `<span class="inline-block px-2 py-0.5 rounded-full text-[9px] font-bold bg-sky-950/60 text-sky-400 border border-sky-500/20">${t}</span>`).join('');
+    }
+
+    function appendPresetTag(tag) {
+      const input = document.getElementById('tag-modal-input');
+      const existing = input.value.split(',').map(t => t.trim()).filter(Boolean);
+      if (!existing.includes(tag)) {
+        existing.push(tag);
+        input.value = existing.join(', ');
+        updateTagPreview(input.value);
+      }
+    }
+
+    async function saveTagModal() {
+      if (!_tagModalSectionId) return;
+      const tags = document.getElementById('tag-modal-input').value.trim();
+      try {
+        const res = await fetch(`/admin/sections/${_tagModalSectionId}/tags`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ tags })
+        });
+        if (res.ok) {
+          closeTagModal();
+          window.location.reload();
+        } else {
+          alert('Failed to save tags. Please try again.');
+        }
+      } catch (e) {
+        alert('Network error saving tags.');
+      }
     }
 
     function openAddQuestionModal() {
