@@ -148,7 +148,7 @@
         <label for="user-name" class="block text-sm font-semibold text-stone-300 mb-2 tracking-wide">ENTER YOUR NAME</label>
         <div class="neon-border flex rounded-lg border border-stone-800 bg-stone-950/45 transition duration-300">
           <span class="inline-flex items-center px-3 text-stone-600 text-lg">👤</span>
-          <input type="text" id="user-name" class="block w-full p-3 bg-transparent text-stone-100 placeholder-stone-600 focus:outline-none text-base" placeholder="What should we call you?" required>
+          <input type="text" id="user-name" class="block w-full p-3 bg-transparent text-stone-100 placeholder-stone-600 focus:outline-none text-base" placeholder="What should we call you?" required minlength="3" maxlength="15" pattern="^[a-zA-Z0-9]{3,15}$" title="Username must be 3-15 alphanumeric characters (letters and numbers only).">
         </div>
       </div>
 
