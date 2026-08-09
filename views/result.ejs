@@ -873,6 +873,12 @@
       document.getElementById('ai-tutor-drawer').classList.add('translate-x-full');
     }
 
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeAiTutorDrawer();
+      }
+    });
+
     async function sendTutorQuery() {
       const input = document.getElementById('tutor-user-input');
       const userQuery = input.value.trim();
