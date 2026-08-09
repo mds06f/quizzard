@@ -142,12 +142,12 @@ describe('Quiz Routes', () => {
 
   test('POST /api/quiz/save-result should save the result', async () => {
     const resultData = {
-      userName: 'Test User',
+      userName: 'TestUser',
       sectionId: 1,
       result: { score: 3, total: 5 }
     };
 
-    db.saveResult.mockResolvedValueOnce({ id: 1, user_name: 'Test User', section_id: 1, score: 3, total: 5 });
+    db.saveResult.mockResolvedValueOnce({ id: 1, user_name: 'TestUser', section_id: 1, score: 3, total: 5 });
 
     const response = await request(app)
       .post('/api/quiz/save-result')
@@ -164,7 +164,7 @@ describe('Quiz Routes', () => {
     const postData = {
       text: 'This is a long piece of mock notes that has more than fifty characters to pass validation correctly.',
       difficulty: 'medium',
-      userName: 'Test User',
+      userName: 'TestUser',
       numQuestions: 5
     };
 
@@ -181,7 +181,7 @@ describe('Quiz Routes', () => {
     const postData = {
       text: 'too short',
       difficulty: 'medium',
-      userName: 'Test User'
+      userName: 'TestUser'
     };
 
     const response = await request(app)
@@ -199,7 +199,7 @@ describe('Quiz Routes', () => {
     const postData = {
       text: 'This is a long piece of mock notes that has more than fifty characters to pass validation correctly.',
       difficulty: 'medium',
-      userName: 'Test User'
+      userName: 'TestUser'
     };
 
     const response = await request(app)
