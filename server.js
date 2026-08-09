@@ -325,25 +325,53 @@ if (cluster.isMaster) {
       }
     });
 
+    socket.on('rejoinRoom', async ({ roomCode, userName }) => {
+      const room = await roomManager.getRoom(roomCode);
+      if (!room) return;
+
+      const player = room.players.find(p => p.name === userName);
+      if (player) {
+        player.socketId = socket.id;
+        await roomManager.saveRoom(roomCode, room);
+        await roomManager.setSocketRoomMapping(socket.id, roomCode);
+      }
+
+      socket.join(roomCode);
+      socket.emit('scoreboardUpdate', { players: room.players.map(p => ({ name: p.name, score: p.score })) });
+
+      const qIndex = room.currentQuestionIndex;
+      if (qIndex < room.questions.length) {
+        socket.emit('loadQuestion', {
+          questionIndex: qIndex,
+          totalQuestions: room.questions.length,
+          question: room.questions[qIndex]
+        });
+      }
+    });
+
     socket.on('disconnect', async () => {
-      const roomCode = await roomManager.getRoomCodeBySocket(socket.id);
-      if (roomCode) {
-        const room = await roomManager.getRoom(roomCode);
-        if (room) {
-          const playerIndex = room.players.findIndex(p => p.socketId === socket.id);
-          if (playerIndex > -1) {
-            room.players.splice(playerIndex, 1);
-            await roomManager.deleteSocketRoomMapping(socket.id);
-            
-            if (room.players.length === 0) {
-              await roomManager.deleteRoom(roomCode);
-            } else {
-              await roomManager.saveRoom(roomCode, room);
-              io.to(roomCode).emit('playerDisconnected', 'Opponent disconnected.');
+      const socketIdToClean = socket.id;
+      // 5-second grace period for brief disconnects
+      setTimeout(async () => {
+        const roomCode = await roomManager.getRoomCodeBySocket(socketIdToClean);
+        if (roomCode) {
+          const room = await roomManager.getRoom(roomCode);
+          if (room) {
+            const playerIndex = room.players.findIndex(p => p.socketId === socketIdToClean);
+            if (playerIndex > -1) {
+              room.players.splice(playerIndex, 1);
+              await roomManager.deleteSocketRoomMapping(socketIdToClean);
+              
+              if (room.players.length === 0) {
+                await roomManager.deleteRoom(roomCode);
+              } else {
+                await roomManager.saveRoom(roomCode, room);
+                io.to(roomCode).emit('playerDisconnected', 'Opponent disconnected.');
+              }
             }
           }
         }
-      }
+      }, 5000);
     });
   });
 }
