@@ -42,11 +42,34 @@ router.get('/logout', (req, res) => {
   });
 });
 
-// GET admin dashboard listing sections & questions
 router.get('/', isAdmin, async (req, res) => {
   try {
+    const page = parseInt(req.query.page) || 1;
+    const search = (req.query.search || '').trim().toLowerCase();
+    const limit = 10;
+
     const sections = await db.getAllSections();
-    const questions = await db.getAllQuestions();
+    let questions = await db.getAllQuestions();
+
+    // Map section names to questions for easy search indexing
+    if (search) {
+      questions = questions.filter(q => {
+        const textMatch = q.text && q.text.toLowerCase().includes(search);
+        const explanationMatch = q.explanation && q.explanation.toLowerCase().includes(search);
+        const optionsMatch = q.options && q.options.some(opt => opt.toLowerCase().includes(search));
+        
+        const sec = sections.find(s => String(s.id) === String(q.sectionId));
+        const sectionMatch = sec && sec.name.toLowerCase().includes(search);
+        
+        return textMatch || explanationMatch || optionsMatch || sectionMatch;
+      });
+    }
+
+    const totalQuestions = questions.length;
+    const totalPages = Math.ceil(totalQuestions / limit) || 1;
+    const currentPage = Math.min(Math.max(1, page), totalPages);
+    const startIndex = (currentPage - 1) * limit;
+    const paginatedQuestions = questions.slice(startIndex, startIndex + limit);
     
     // Read audit logs
     const fs = require('fs');
@@ -60,7 +83,15 @@ router.get('/', isAdmin, async (req, res) => {
       }).reverse(); // latest first
     }
     
-    res.render('admin/dashboard', { sections, questions, auditLogs });
+    res.render('admin/dashboard', { 
+      sections, 
+      questions: paginatedQuestions, 
+      auditLogs,
+      currentPage,
+      totalPages,
+      search,
+      totalQuestions
+    });
   } catch (err) {
     console.error('Error fetching admin data:', err);
     res.status(500).send('Internal Server Error');

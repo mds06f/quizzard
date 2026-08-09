@@ -106,19 +106,35 @@
         <div class="flex justify-between items-center pb-2 border-b border-stone-850">
           <div>
             <h2 id="active-section-title" class="text-sm font-bold text-stone-300 uppercase tracking-wider">All Questions</h2>
-            <p id="question-count-label" class="text-[10px] text-stone-500 mt-0.5">Total Questions: <%= questions.length %></p>
+            <p id="question-count-label" class="text-[10px] text-stone-500 mt-0.5">Total Questions: <%= typeof totalQuestions !== 'undefined' ? totalQuestions : questions.length %></p>
           </div>
           <button id="btn-add-question" onclick="openAddQuestionModal()" class="bg-amber-600 hover:bg-amber-500 text-white font-semibold px-3 py-1.5 rounded-lg text-xs shadow transition">
             + Create Question
           </button>
         </div>
 
+        <!-- Backend Search Bar -->
+        <form action="/admin" method="GET" class="flex gap-2">
+          <div class="relative flex-1">
+            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-stone-600 text-xs pointer-events-none">🔍</span>
+            <input type="text" name="search" value="<%= typeof search !== 'undefined' ? search : '' %>" placeholder="Search questions, explanations, options, or topics..." class="block w-full pl-9 pr-3 py-2 bg-stone-950/45 border border-stone-850 focus:border-stone-750 focus:outline-none rounded-lg text-xs text-stone-300 placeholder-stone-600">
+          </div>
+          <% if (typeof search !== 'undefined' && search) { %>
+            <a href="/admin" class="bg-stone-850 hover:bg-stone-800 border border-stone-800 text-stone-300 px-3 py-2 rounded-lg text-xs flex items-center transition">
+              Clear
+            </a>
+          <% } %>
+          <button type="submit" class="bg-amber-600/20 hover:bg-amber-600/30 text-amber-400 border border-amber-600/20 hover:border-amber-600/30 px-4 py-2 rounded-lg text-xs font-semibold shadow transition">
+            Search
+          </button>
+        </form>
+
         <div id="questions-list-container" class="space-y-4 max-h-[600px] overflow-y-auto pr-1">
           <% questions.forEach((q, idx) => { %>
             <div class="question-item p-4 rounded-xl border border-stone-800 bg-stone-950/30 hover:border-stone-750 transition space-y-3" data-section-id="<%= q.section_id %>">
               <div class="flex justify-between items-start gap-3">
                 <div class="flex items-start gap-2.5">
-                  <span class="bg-stone-850 border border-stone-800 text-stone-400 text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5"><%= idx + 1 %></span>
+                  <span class="bg-stone-850 border border-stone-800 text-stone-400 text-[10px] font-bold rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 mt-0.5"><%= (typeof currentPage !== 'undefined' ? (currentPage - 1) * 10 : 0) + idx + 1 %></span>
                   <div>
                     <h3 class="text-sm font-medium text-stone-200"><%= q.question %></h3>
                     <div class="flex gap-2 mt-1.5 flex-wrap">
@@ -156,6 +172,40 @@
             </div>
           <% }) %>
         </div>
+
+        <!-- Pagination Controls -->
+        <% if (typeof totalPages !== 'undefined' && totalPages > 1) { %>
+          <div class="flex items-center justify-between pt-4 border-t border-stone-850 mt-4 text-xs">
+            <span class="text-stone-500">
+              Showing page <%= currentPage %> of <%= totalPages %>
+            </span>
+            <div class="flex items-center gap-1">
+              <% if (currentPage > 1) { %>
+                <a href="/admin?page=<%= currentPage - 1 %><%= typeof search !== 'undefined' && search ? '&search=' + encodeURIComponent(search) : '' %>" class="bg-stone-850 hover:bg-stone-800 text-stone-300 hover:text-white px-2.5 py-1.5 rounded border border-stone-800 transition">
+                  &laquo; Prev
+                </a>
+              <% } %>
+              
+              <% for (let i = 1; i <= totalPages; i++) { %>
+                <% if (i === currentPage) { %>
+                  <span class="bg-amber-600 text-white px-2.5 py-1.5 rounded font-bold border border-amber-600">
+                    <%= i %>
+                  </span>
+                <% } else { %>
+                  <a href="/admin?page=<%= i %><%= typeof search !== 'undefined' && search ? '&search=' + encodeURIComponent(search) : '' %>" class="bg-stone-850 hover:bg-stone-800 text-stone-300 hover:text-white px-2.5 py-1.5 rounded border border-stone-800 transition">
+                    <%= i %>
+                  </a>
+                <% } %>
+              <% } %>
+              
+              <% if (currentPage < totalPages) { %>
+                <a href="/admin?page=<%= currentPage + 1 %><%= typeof search !== 'undefined' && search ? '&search=' + encodeURIComponent(search) : '' %>" class="bg-stone-850 hover:bg-stone-800 text-stone-300 hover:text-white px-2.5 py-1.5 rounded border border-stone-800 transition">
+                  Next &raquo;
+                </a>
+              <% } %>
+            </div>
+          </div>
+        <% } %>
       </div>
 
       <!-- Audit Logs Panel -->
