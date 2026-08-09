@@ -614,6 +614,18 @@
               <p id="analytics-quizzes" class="text-3xl font-extrabold text-emerald-400">--</p>
             </div>
           </div>
+          
+          <!-- Interactive SVG Analytics Chart -->
+          <div class="bg-stone-950/40 border border-stone-850 p-5 rounded-xl space-y-3">
+            <div class="flex justify-between items-center pb-1 border-b border-stone-850/50">
+              <h4 class="text-[10px] font-bold text-stone-300 uppercase tracking-wider">📈 Recent Quiz Accuracy Trend</h4>
+              <span class="text-[9px] text-stone-500 font-mono">last 10 attempts</span>
+            </div>
+            <div id="analytics-chart-container" class="relative w-full h-44 flex items-center justify-center">
+              <p class="text-stone-500 text-xs italic">Take quizzes to view your accuracy trend chart.</p>
+            </div>
+          </div>
+
           <div class="pt-4 border-t border-stone-850 space-y-2">
             <p class="text-xs font-bold text-stone-400 uppercase tracking-wider">Subtopic Mastery Index</p>
             <div id="analytics-topics-list" class="space-y-2">
@@ -734,14 +746,106 @@
       });
     }
 
+    function renderAnalyticsChart(history) {
+      const container = document.getElementById('analytics-chart-container');
+      if (!container) return;
+
+      if (!history || history.length === 0) {
+        container.innerHTML = `<p class="text-stone-500 text-xs italic">Take quizzes to view your accuracy trend chart.</p>`;
+        return;
+      }
+
+      const data = [...history].slice(0, 10).reverse();
+      const width = 500;
+      const height = 150;
+      const padding = 25;
+      
+      const points = [];
+      const step = data.length > 1 ? (width - padding * 2) / (data.length - 1) : 0;
+      
+      data.forEach((item, idx) => {
+        const accuracy = item.total > 0 ? (item.score / item.total) * 100 : 0;
+        const x = padding + idx * step;
+        const y = height - padding - (accuracy / 100) * (height - padding * 2);
+        points.push({ x, y, accuracy, topic: item.topic, date: item.date });
+      });
+
+      let pathD = "";
+      if (points.length > 0) {
+        pathD = `M ${points[0].x} ${points[0].y} ` + points.slice(1).map(p => `L ${p.x} ${p.y}`).join(' ');
+      }
+
+      let svgContent = `
+        <svg viewBox="0 0 ${width} ${height}" class="w-full h-full">
+          <defs>
+            <linearGradient id="chart-grad" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#f59e0b" stop-opacity="0.25"/>
+              <stop offset="100%" stop-color="#f59e0b" stop-opacity="0"/>
+            </linearGradient>
+            <linearGradient id="line-grad" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%" stop-color="#f59e0b"/>
+              <stop offset="100%" stop-color="#ea580c"/>
+            </linearGradient>
+          </defs>
+          <!-- Grid Lines -->
+          <line x1="${padding}" y1="${padding}" x2="${width - padding}" y2="${padding}" stroke="#292524" stroke-dasharray="3,3" />
+          <line x1="${padding}" y1="${height / 2}" x2="${width - padding}" y2="${height / 2}" stroke="#292524" stroke-dasharray="3,3" />
+          <line x1="${padding}" y1="${height - padding}" x2="${width - padding}" y2="${height - padding}" stroke="#44403c" stroke-width="1.5" />
+          
+          <!-- Axis Labels -->
+          <text x="${padding - 5}" y="${padding + 3}" fill="#78716c" font-size="8" text-anchor="end">100%</text>
+          <text x="${padding - 5}" y="${height / 2 + 3}" fill="#78716c" font-size="8" text-anchor="end">50%</text>
+          <text x="${padding - 5}" y="${height - padding + 3}" fill="#78716c" font-size="8" text-anchor="end">0%</text>
+      `;
+
+      if (points.length > 0) {
+        if (points.length > 1) {
+          const areaD = `${pathD} L ${points[points.length - 1].x} ${height - padding} L ${points[0].x} ${height - padding} Z`;
+          svgContent += `
+            <path d="${areaD}" fill="url(#chart-grad)" />
+            <path d="${pathD}" fill="none" stroke="url(#line-grad)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+          `;
+        }
+
+        points.forEach((p) => {
+          svgContent += `
+            <g class="chart-point-group cursor-pointer">
+              <circle cx="${p.x}" cy="${p.y}" r="4" fill="#1c1917" stroke="#f59e0b" stroke-width="2" />
+              <circle cx="${p.x}" cy="${p.y}" r="10" fill="transparent" />
+              <title>${p.topic}\nAccuracy: ${Math.round(p.accuracy)}%\nDate: ${p.date}</title>
+            </g>
+          `;
+        });
+      }
+
+      svgContent += `</svg>`;
+      container.innerHTML = svgContent;
+    }
+
     async function loadAnalyticsData() {
       try {
+        const history = JSON.parse(localStorage.getItem('quizHistory') || '[]');
+        let overallAccuracy = 0;
+        let totalQuizzesTaken = history.length;
+        
+        if (totalQuizzesTaken > 0) {
+          let totalScore = 0;
+          let totalQuestions = 0;
+          history.forEach(h => {
+            totalScore += h.score;
+            totalQuestions += h.total;
+          });
+          overallAccuracy = totalQuestions > 0 ? Math.round((totalScore / totalQuestions) * 100) : 0;
+        }
+
+        document.getElementById('analytics-accuracy').textContent = `${overallAccuracy}%`;
+        document.getElementById('analytics-quizzes').textContent = totalQuizzesTaken;
+        
+        renderAnalyticsChart(history);
+
         const response = await fetch('/api/quiz/analytics');
         const data = await response.json();
         
-        document.getElementById('analytics-accuracy').textContent = `${data.overallAccuracy || 84}%`;
-        document.getElementById('analytics-quizzes').textContent = data.totalQuizzesTaken || 12;
-
         const list = document.getElementById('analytics-topics-list');
         if (list && data.topics) {
           list.innerHTML = data.topics.map(t => `
