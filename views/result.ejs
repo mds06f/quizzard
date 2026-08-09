@@ -263,8 +263,12 @@
             🎯 Retry Missed Questions (<%= total - score %>)
           </button>
         <% } %>
+        <button id="btn-quick-retry" type="button"
+          class="sm:col-span-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-bold p-3.5 rounded-lg shadow-lg active:scale-[0.99] transition duration-300 flex items-center justify-center gap-2 cursor-pointer">
+          🔁 Quick Retry Quiz
+        </button>
         <a href="/"
-          class="sm:col-span-2 bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-semibold p-3.5 rounded-lg shadow-lg active:scale-[0.99] transition duration-300 flex items-center justify-center gap-2">
+          class="sm:col-span-2 bg-stone-900 border border-stone-800 text-stone-300 hover:text-white font-semibold p-3.5 rounded-lg active:scale-[0.99] transition duration-300 flex items-center justify-center gap-2">
           Take Another Quiz ➡️
         </a>
       </div>
@@ -541,7 +545,30 @@
         });
       }
 
-      // Reset Cache click listener
+      const btnQuickRetry = document.getElementById('btn-quick-retry');
+      if (btnQuickRetry) {
+        btnQuickRetry.addEventListener('click', () => {
+          const urlParams = new URLSearchParams(window.location.search);
+          const isReview = urlParams.get('review') === 'true';
+          if (isReview) {
+            window.location.href = `/quiz?review=true`;
+            return;
+          }
+
+          const sectionId = urlParams.get('sectionId') || window.localStorage.getItem('sectionId');
+          const difficulty = window.localStorage.getItem('difficulty') || 'medium';
+          const isChallenge = urlParams.get('challenge') === 'true';
+
+          if (sectionId) {
+            window.localStorage.setItem('sectionId', sectionId);
+            window.localStorage.setItem('difficulty', difficulty);
+            window.localStorage.setItem('challengeMode', isChallenge ? 'true' : 'false');
+            window.location.href = `/quiz`;
+          } else {
+            window.location.href = `/`;
+          }
+        });
+      }
       const btnResetCache = document.getElementById('btn-reset-cache');
       if (btnResetCache) {
         btnResetCache.addEventListener('click', () => {
