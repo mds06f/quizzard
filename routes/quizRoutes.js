@@ -370,6 +370,60 @@ ${notesText}`;
   }
 });
 
+// POST conflict-aware sync endpoint
+router.post('/sync', async (req, res) => {
+  const { userName, clientRevision, lastSyncTimestamp, attempts, resolveAction } = req.body;
+  const user = userName || (attempts && attempts.length > 0 ? attempts[0].userName : 'anonymous');
+
+  try {
+    const serverResults = (await db.getResultsByUserName(user)) || [];
+    const serverRevision = serverResults.length;
+    const latestServerTs = serverResults.length > 0 ? Math.max(...serverResults.map(r => r.timestamp ? new Date(r.timestamp).getTime() : 0)) : 0;
+
+    const hasConflict = lastSyncTimestamp && latestServerTs > lastSyncTimestamp && !resolveAction && attempts && attempts.length > 0;
+
+    if (hasConflict) {
+      return res.status(409).json({
+        conflict: true,
+        serverRevision,
+        clientRevision: clientRevision || 0,
+        serverState: { resultsCount: serverResults.length, latestTimestamp: latestServerTs },
+        clientState: { pendingCount: attempts.length },
+        message: 'Sync conflict detected: Server records updated while offline.'
+      });
+    }
+
+    if (resolveAction === 'keep_server') {
+      return res.json({
+        success: true,
+        message: 'Server state kept. Offline local attempts discarded.',
+        serverRevision,
+        syncedCount: 0
+      });
+    }
+
+    if (attempts && Array.isArray(attempts)) {
+      for (const attempt of attempts) {
+        if (attempt.userName && !validateUsername(attempt.userName)) {
+          return res.status(400).json({ error: 'Invalid username in sync payload.' });
+        }
+        await db.saveResult(attempt.userName || user, attempt.sectionId, attempt.score, attempt.total);
+      }
+    }
+
+    const updatedServerResults = (await db.getResultsByUserName(user)) || [];
+    res.status(200).json({
+      success: true,
+      message: 'Offline quiz results synced successfully.',
+      serverRevision: updatedServerResults.length,
+      syncedCount: attempts ? attempts.length : 0
+    });
+  } catch (err) {
+    console.error('Error in /api/quiz/sync:', err);
+    res.status(500).json({ error: 'Server error during sync execution.' });
+  }
+});
+
 // POST bulk sync offline results
 router.post('/user/sync', async (req, res) => {
   const { attempts } = req.body;
