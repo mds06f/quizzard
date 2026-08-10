@@ -162,6 +162,13 @@ const db = {
     return newResult;
   },
 
+  // Get results by user name
+  getResultsByUserName: async (userName) => {
+    const data = readData();
+    if (!data.results) return [];
+    return data.results.filter(r => r.user_name && r.user_name.toLowerCase() === userName.toLowerCase());
+  },
+
   // Create AI quiz section and questions
   createAIQuiz: async (title, questions) => {
     const data = readData();

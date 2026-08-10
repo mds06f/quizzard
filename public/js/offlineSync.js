@@ -109,6 +109,54 @@
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
       });
+    },
+
+    // Execute conflict-aware background sync with backend /api/quiz/sync
+    async syncPendingResults(userName, resolveAction = null) {
+      const pendingItems = await this.getPendingSyncs();
+      if (!pendingItems || pendingItems.length === 0) return { count: 0 };
+
+      const clientRev = parseInt(localStorage.getItem('quizzard_sync_revision') || '0', 10);
+      const lastSyncTs = parseInt(localStorage.getItem('quizzard_last_sync_ts') || '0', 10);
+
+      try {
+        const res = await fetch('/api/quiz/sync', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            userName: userName || 'anonymous',
+            clientRevision: clientRev,
+            lastSyncTimestamp: lastSyncTs,
+            attempts: pendingItems,
+            resolveAction: resolveAction
+          })
+        });
+
+        if (res.status === 409) {
+          const conflictData = await res.json();
+          console.warn('[Offline Sync] Sync conflict detected:', conflictData);
+          if (typeof this.onConflictDetected === 'function') {
+            this.onConflictDetected({ conflictData, pendingItems, userName });
+          }
+          return { conflict: true, data: conflictData };
+        }
+
+        if (res.ok) {
+          const data = await res.json();
+          localStorage.setItem('quizzard_sync_revision', data.serverRevision || (clientRev + pendingItems.length));
+          localStorage.setItem('quizzard_last_sync_ts', Date.now().toString());
+
+          const ids = pendingItems.map(item => item.id).filter(Boolean);
+          if (ids.length > 0) {
+            await this.removePendingSyncs(ids);
+          }
+          console.log('[Offline Sync] Successfully synced pending attempts:', data);
+          return { success: true, syncedCount: pendingItems.length };
+        }
+      } catch (err) {
+        console.error('[Offline Sync] Failed to sync pending attempts:', err);
+      }
+      return { success: false };
     }
   };
 

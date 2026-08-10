@@ -2437,6 +2437,50 @@
         });
       }
 
+      // Offline Sync Conflict Resolution Modal Handlers
+      let _pendingConflictContext = null;
+
+      if (window.offlineSync) {
+        window.offlineSync.onConflictDetected = function({ conflictData, pendingItems, userName }) {
+          _pendingConflictContext = { pendingItems, userName };
+          const modal = document.getElementById('sync-conflict-modal');
+          const localCountEl = document.getElementById('conflict-local-count');
+          const serverCountEl = document.getElementById('conflict-server-count');
+
+          if (localCountEl) localCountEl.textContent = pendingItems.length;
+          if (serverCountEl && conflictData.serverState) serverCountEl.textContent = conflictData.serverState.resultsCount || 0;
+
+          if (modal) modal.classList.remove('hidden');
+        };
+
+        // Trigger automatic sync on page load if online
+        if (navigator.onLine) {
+          const userName = (userNameInput && userNameInput.value.trim()) || window.localStorage.getItem('userName') || 'anonymous';
+          window.offlineSync.syncPendingResults(userName);
+        }
+      }
+
+      async function handleResolveConflict(action) {
+        const modal = document.getElementById('sync-conflict-modal');
+        if (modal) modal.classList.add('hidden');
+
+        if (_pendingConflictContext && window.offlineSync) {
+          const res = await window.offlineSync.syncPendingResults(_pendingConflictContext.userName, action);
+          if (res && res.success) {
+            alert('🎉 Sync resolved and completed successfully!');
+            window.location.reload();
+          }
+        }
+      }
+
+      const btnMerge = document.getElementById('btn-resolve-merge');
+      const btnLocal = document.getElementById('btn-resolve-local');
+      const btnServer = document.getElementById('btn-resolve-server');
+
+      if (btnMerge) btnMerge.addEventListener('click', () => handleResolveConflict('merge'));
+      if (btnLocal) btnLocal.addEventListener('click', () => handleResolveConflict('keep_client'));
+      if (btnServer) btnServer.addEventListener('click', () => handleResolveConflict('keep_server'));
+
       loadSections();
     });
   </script>
@@ -2474,6 +2518,41 @@
       <button type="button" id="btn-cancel-matchmaking" class="w-full bg-stone-850 hover:bg-stone-800 border border-stone-750 text-stone-300 font-semibold py-2.5 px-4 rounded-lg text-xs transition cursor-pointer">
         Cancel Matchmaking
       </button>
+    </div>
+  </div>
+  <!-- Sync Conflict Resolution Modal Overlay -->
+  <div id="sync-conflict-modal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="glass-card max-w-md w-full rounded-2xl border border-amber-500/40 p-6 sm:p-8 space-y-5 text-center shadow-2xl">
+      <div class="text-4xl animate-bounce">⚠️</div>
+      <div>
+        <h3 class="text-lg font-bold text-amber-300">Sync Conflict Detected</h3>
+        <p class="text-xs text-stone-400 mt-1">Your offline local progress conflicts with new quiz results saved on the server database.</p>
+      </div>
+
+      <div id="sync-conflict-details" class="p-3 bg-stone-950/60 border border-stone-800 rounded-xl text-xs space-y-1 text-left">
+        <div class="flex justify-between">
+          <span class="text-stone-500">Local Offline Attempts:</span>
+          <span id="conflict-local-count" class="font-bold text-amber-400">0</span>
+        </div>
+        <div class="flex justify-between">
+          <span class="text-stone-500">Server Total Attempts:</span>
+          <span id="conflict-server-count" class="font-bold text-sky-400">0</span>
+        </div>
+      </div>
+
+      <p class="text-xs text-stone-300 font-semibold">Choose how to resolve this merge conflict:</p>
+
+      <div class="grid grid-cols-1 gap-2.5">
+        <button type="button" id="btn-resolve-merge" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-bold py-2.5 px-4 rounded-lg text-xs shadow transition cursor-pointer">
+          🔀 Merge Both States (Recommended)
+        </button>
+        <button type="button" id="btn-resolve-local" class="w-full bg-stone-850 hover:bg-stone-800 border border-stone-750 text-stone-200 font-semibold py-2.5 px-4 rounded-lg text-xs transition cursor-pointer">
+          📱 Keep Local Attempts (Overwrite Server)
+        </button>
+        <button type="button" id="btn-resolve-server" class="w-full bg-stone-900 hover:bg-stone-850 border border-stone-800 text-stone-400 hover:text-stone-200 font-semibold py-2 px-4 rounded-lg text-xs transition cursor-pointer">
+          ☁️ Keep Server State (Discard Local)
+        </button>
+      </div>
     </div>
   </div>
 </body>
