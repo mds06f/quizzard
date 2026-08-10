@@ -175,6 +175,88 @@ if (cluster.isMaster) {
       socket.emit('roomCreated', { roomCode });
     });
 
+    // Live Multiplayer Matchmaking Queue
+    const matchmakingQueue = [];
+
+    function removeFromMatchmakingQueue(socketId) {
+      const idx = matchmakingQueue.findIndex(item => item.socketId === socketId);
+      if (idx > -1) {
+        matchmakingQueue.splice(idx, 1);
+      }
+    }
+
+    socket.on('joinMatchmaking', async ({ userName, sectionId, difficulty, count, mode }) => {
+      removeFromMatchmakingQueue(socket.id);
+
+      const targetSec = String(sectionId || '1');
+      const targetDiff = String(difficulty || 'medium');
+      const targetMode = String(mode || 'competitive');
+
+      // Find compatible match in queue
+      const opponentIdx = matchmakingQueue.findIndex(item =>
+        item.socketId !== socket.id &&
+        String(item.sectionId) === targetSec &&
+        String(item.difficulty) === targetDiff &&
+        String(item.mode) === targetMode
+      );
+
+      if (opponentIdx > -1) {
+        const opponent = matchmakingQueue.splice(opponentIdx, 1)[0];
+        const roomCode = Math.floor(100000 + Math.random() * 900000).toString();
+
+        const newRoom = {
+          sectionId: targetSec,
+          difficulty: targetDiff,
+          count: parseInt(count, 10) || 5,
+          mode: targetMode,
+          players: [
+            { name: opponent.userName, socketId: opponent.socketId, score: 0, answersCount: 0, correctCount: 0 },
+            { name: userName, socketId: socket.id, score: 0, answersCount: 0, correctCount: 0 }
+          ],
+          currentQuestionIndex: 0,
+          questions: [],
+          answersReceived: 0,
+          firstCorrectSocketId: null
+        };
+
+        await roomManager.saveRoom(roomCode, newRoom);
+        await roomManager.setSocketRoomMapping(opponent.socketId, roomCode);
+        await roomManager.setSocketRoomMapping(socket.id, roomCode);
+
+        const opponentSocket = io.sockets.sockets.get(opponent.socketId);
+        if (opponentSocket) opponentSocket.join(roomCode);
+        socket.join(roomCode);
+
+        const matchData = {
+          roomCode,
+          sectionId: targetSec,
+          difficulty: targetDiff,
+          count: newRoom.count,
+          mode: targetMode,
+          players: newRoom.players.map(p => ({ name: p.name, score: p.score }))
+        };
+
+        io.to(roomCode).emit('matchFound', matchData);
+        io.to(roomCode).emit('roomReady', matchData);
+      } else {
+        matchmakingQueue.push({
+          socketId: socket.id,
+          userName: userName || 'Anonymous',
+          sectionId: targetSec,
+          difficulty: targetDiff,
+          count: parseInt(count, 10) || 5,
+          mode: targetMode,
+          timestamp: Date.now()
+        });
+        socket.emit('matchmakingQueued', { status: 'Searching for an opponent...' });
+      }
+    });
+
+    socket.on('leaveMatchmaking', () => {
+      removeFromMatchmakingQueue(socket.id);
+      socket.emit('matchmakingLeft');
+    });
+
     socket.on('joinRoom', async ({ roomCode, userName }) => {
       const room = await roomManager.getRoom(roomCode);
       if (!room) {
@@ -373,6 +455,7 @@ if (cluster.isMaster) {
 
     socket.on('disconnect', async () => {
       const socketIdToClean = socket.id;
+      removeFromMatchmakingQueue(socketIdToClean);
       // 5-second grace period for brief disconnects
       setTimeout(async () => {
         const roomCode = await roomManager.getRoomCodeBySocket(socketIdToClean);

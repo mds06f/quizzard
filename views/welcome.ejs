@@ -391,6 +391,17 @@
               </div>
             </div>
           </div>
+
+          <!-- Quick Matchmaking Queue Section -->
+          <div class="pt-3 border-t border-stone-850 flex flex-col sm:flex-row items-center justify-between gap-3">
+            <div class="text-center sm:text-left">
+              <span class="text-xs font-bold text-amber-300">⚡ Live Matchmaking Queue</span>
+              <p class="text-[10px] text-stone-400">Instantly auto-pair with another student studying the same topic</p>
+            </div>
+            <button type="button" id="btn-quick-matchmaking" class="w-full sm:w-auto bg-amber-600 hover:bg-amber-500 text-white font-bold py-2.5 px-4 rounded-lg text-xs shadow transition cursor-pointer flex items-center justify-center gap-1.5 flex-shrink-0">
+              ⚡ Find Match Now
+            </button>
+          </div>
         </div>
 
         <div>
@@ -2355,6 +2366,77 @@
       }
       checkQuizDraft();
 
+      // Matchmaking Queue Client Script
+      const btnQuickMatchmaking = document.getElementById('btn-quick-matchmaking');
+      const matchmakingModal = document.getElementById('matchmaking-modal');
+      const btnCancelMatchmaking = document.getElementById('btn-cancel-matchmaking');
+      const matchmakingTitle = document.getElementById('matchmaking-status-title');
+      const matchmakingDesc = document.getElementById('matchmaking-status-desc');
+
+      if (btnQuickMatchmaking) {
+        btnQuickMatchmaking.addEventListener('click', () => {
+          const userName = userNameInput.value.trim();
+          if (!userName) {
+            userNameInput.focus();
+            userNameInput.reportValidity();
+            return;
+          }
+
+          const sectionSelect = document.getElementById('section-select');
+          const sectionId = sectionSelect ? sectionSelect.value : '1';
+          const difficulty = document.getElementById('difficulty-select').value;
+          const count = document.getElementById('num-questions-select').value;
+          const mode = window.multiplayerMode || 'competitive';
+
+          if (!sectionId) {
+            alert('Please select a topic section to match on.');
+            return;
+          }
+
+          window.localStorage.setItem('userName', userName);
+          if (!socket) socket = io();
+
+          if (matchmakingTitle) matchmakingTitle.textContent = 'Searching for Opponent...';
+          if (matchmakingDesc) matchmakingDesc.textContent = 'Matching you with an active player studying the same topic';
+          if (matchmakingModal) matchmakingModal.classList.remove('hidden');
+
+          socket.emit('joinMatchmaking', {
+            userName,
+            sectionId,
+            difficulty,
+            count,
+            mode
+          });
+
+          socket.off('matchmakingQueued').on('matchmakingQueued', (data) => {
+            if (matchmakingDesc) matchmakingDesc.textContent = data.status || 'In queue...';
+          });
+
+          socket.off('matchFound').on('matchFound', (data) => {
+            if (matchmakingTitle) matchmakingTitle.textContent = '⚡ Match Found!';
+            if (matchmakingDesc) matchmakingDesc.textContent = 'Launching multiplayer quiz match...';
+
+            window.localStorage.setItem('roomCode', data.roomCode);
+            window.localStorage.setItem('sectionId', data.sectionId);
+            window.localStorage.setItem('difficulty', data.difficulty);
+            window.localStorage.setItem('questionCount', data.count);
+            window.localStorage.setItem('multiplayer', 'true');
+            window.localStorage.setItem('roomMode', data.mode);
+
+            setTimeout(() => {
+              window.location.href = '/quiz';
+            }, 1000);
+          });
+        });
+      }
+
+      if (btnCancelMatchmaking) {
+        btnCancelMatchmaking.addEventListener('click', () => {
+          if (socket) socket.emit('leaveMatchmaking');
+          if (matchmakingModal) matchmakingModal.classList.add('hidden');
+        });
+      }
+
       loadSections();
     });
   </script>
@@ -2374,6 +2456,24 @@
           Clear History
         </button>
       </div>
+    </div>
+  </div>
+  <!-- Live Matchmaking Overlay Modal -->
+  <div id="matchmaking-modal" class="hidden fixed inset-0 z-50 bg-black/85 backdrop-blur-md flex items-center justify-center p-4">
+    <div class="glass-card max-w-sm w-full rounded-2xl border border-amber-500/30 p-8 space-y-5 text-center shadow-2xl">
+      <div class="relative w-20 h-20 mx-auto flex items-center justify-center">
+        <div class="absolute inset-0 rounded-full border-2 border-amber-500/40 animate-ping"></div>
+        <div class="w-14 h-14 rounded-full bg-amber-500/10 border border-amber-500/50 flex items-center justify-center text-3xl">
+          ⚡
+        </div>
+      </div>
+      <div>
+        <h3 id="matchmaking-status-title" class="text-lg font-bold text-amber-300">Searching for Opponent...</h3>
+        <p id="matchmaking-status-desc" class="text-xs text-stone-400 mt-1">Matching you with an active player studying the same topic</p>
+      </div>
+      <button type="button" id="btn-cancel-matchmaking" class="w-full bg-stone-850 hover:bg-stone-800 border border-stone-750 text-stone-300 font-semibold py-2.5 px-4 rounded-lg text-xs transition cursor-pointer">
+        Cancel Matchmaking
+      </button>
     </div>
   </div>
 </body>
