@@ -154,6 +154,17 @@
           <span class="inline-flex items-center px-3 text-stone-600 text-lg">👤</span>
           <input type="text" id="user-name" class="block w-full p-3 bg-transparent text-stone-100 placeholder-stone-600 focus:outline-none text-base" placeholder="What should we call you?" required minlength="3" maxlength="15" pattern="^[a-zA-Z0-9]{3,15}$" title="Username must be 3-15 alphanumeric characters (letters and numbers only).">
         </div>
+      <!-- Social OAuth Logins -->
+      <div class="mb-6 space-y-2">
+        <span class="block text-[10px] font-bold text-stone-500 tracking-wider uppercase">Or Quick Login With</span>
+        <div class="grid grid-cols-2 gap-3">
+          <a href="/api/auth/google" class="flex items-center justify-center gap-2 p-2.5 bg-stone-900 hover:bg-stone-850 border border-stone-800 rounded-lg text-xs font-semibold text-stone-200 transition shadow">
+            <span>🌐</span> Google Login
+          </a>
+          <a href="/api/auth/github" class="flex items-center justify-center gap-2 p-2.5 bg-stone-900 hover:bg-stone-850 border border-stone-800 rounded-lg text-xs font-semibold text-stone-200 transition shadow">
+            <span>🐙</span> GitHub Login
+          </a>
+        </div>
       </div>
 
       <!-- Settings Panel -->
@@ -2073,6 +2084,19 @@
       const savedUserName = window.localStorage.getItem('userName');
       if (savedUserName) {
         userNameInput.value = savedUserName;
+      }
+
+      // Check for OAuth login redirect params
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('oauth') === 'success') {
+        const token = urlParams.get('token');
+        const username = urlParams.get('username');
+        if (token) localStorage.setItem('userToken', token);
+        if (username) {
+          localStorage.setItem('userName', username);
+          if (userNameInput) userNameInput.value = username;
+        }
+        history.replaceState(null, '', window.location.pathname);
       }
 
       const savedDifficulty = window.localStorage.getItem('difficulty');
