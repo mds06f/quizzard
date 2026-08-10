@@ -168,6 +168,11 @@
           class="bg-stone-900/60 border border-stone-850 text-stone-400 hover:text-white rounded-lg px-3 py-2 hover:border-amber-500/40 transition flex items-center gap-1.5 text-xs font-bold" title="Pause Quiz">
           ⏸️ <span class="hidden sm:inline">Pause</span>
         </button>
+
+        <button id="ai-tutor-toggle-btn" type="button"
+          class="bg-amber-600/20 border border-amber-500/30 text-amber-300 hover:bg-amber-600/30 rounded-lg px-3 py-2 transition flex items-center gap-1.5 text-xs font-bold cursor-pointer" title="Ask Gemini AI Tutor">
+          🤖 <span class="hidden sm:inline">AI Tutor</span>
+        </button>
       </div>
     </div>
 
@@ -248,6 +253,49 @@
         <form id="chat-form" class="flex gap-2">
           <input type="text" id="chat-input" maxlength="200" placeholder="Type a message..." autocomplete="off" class="flex-1 bg-stone-900 border border-stone-800 rounded-lg px-3 py-2 text-xs text-stone-200 focus:outline-none focus:border-amber-500">
           <button type="submit" class="bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold px-3 py-2 rounded-lg transition cursor-pointer">Send</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- AI Tutor Side Drawer -->
+    <div id="ai-tutor-drawer" class="fixed top-0 left-0 h-full w-80 sm:w-96 bg-stone-900/95 border-r border-stone-800 backdrop-blur-md z-50 transform -translate-x-full transition-transform duration-300 flex flex-col shadow-2xl">
+      <div class="p-4 border-b border-stone-800 flex justify-between items-center bg-stone-950/60">
+        <div class="flex items-center gap-2">
+          <span class="text-xl">🤖</span>
+          <div>
+            <h3 class="text-sm font-bold text-amber-300 uppercase tracking-wider">Gemini AI Tutor</h3>
+            <p class="text-[10px] text-stone-400">Ask questions about the active question</p>
+          </div>
+        </div>
+        <button id="btn-close-ai-tutor" type="button" class="text-stone-400 hover:text-stone-200 text-sm p-1 cursor-pointer">✕</button>
+      </div>
+
+      <!-- Messages container -->
+      <div id="ai-tutor-messages-list" class="flex-1 p-4 overflow-y-auto space-y-3 font-sans text-xs">
+        <div class="p-3 bg-amber-950/20 border border-amber-500/20 rounded-xl text-amber-200 space-y-1">
+          <p class="font-bold">👋 Hello! I am your AI Study Companion.</p>
+          <p class="text-[11px] text-stone-400">I can explain difficult concepts, break down complex terms, or give real-world examples for the active question.</p>
+        </div>
+      </div>
+
+      <!-- Quick Prompts suggestions -->
+      <div class="px-3 py-2 border-t border-stone-850 bg-stone-950/40 flex flex-wrap gap-1.5">
+        <button type="button" class="ai-prompt-chip px-2.5 py-1 bg-stone-850 hover:bg-stone-800 text-stone-300 text-[10px] font-semibold rounded-full border border-stone-750 transition cursor-pointer" data-prompt="Why is this answer correct?">
+          💡 Why is this correct?
+        </button>
+        <button type="button" class="ai-prompt-chip px-2.5 py-1 bg-stone-850 hover:bg-stone-800 text-stone-300 text-[10px] font-semibold rounded-full border border-stone-750 transition cursor-pointer" data-prompt="Explain this in simple terms.">
+          🧠 Explain simply
+        </button>
+        <button type="button" class="ai-prompt-chip px-2.5 py-1 bg-stone-850 hover:bg-stone-800 text-stone-300 text-[10px] font-semibold rounded-full border border-stone-750 transition cursor-pointer" data-prompt="Give me a real-world example.">
+          🌍 Real-world example
+        </button>
+      </div>
+
+      <!-- Input area -->
+      <div class="p-3 border-t border-stone-800 bg-stone-950/80">
+        <form id="ai-tutor-form" class="flex gap-2">
+          <input type="text" id="ai-tutor-input" placeholder="Ask AI Tutor anything..." autocomplete="off" class="flex-1 bg-stone-900 border border-stone-800 rounded-lg px-3 py-2 text-xs text-stone-200 focus:outline-none focus:border-amber-500">
+          <button type="submit" id="btn-ai-tutor-send" class="bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold px-3 py-2 rounded-lg transition cursor-pointer">Ask</button>
         </form>
       </div>
     </div>
@@ -1611,6 +1659,117 @@
           }
         });
       });
+
+      // Gemini AI Tutor Chatbot Drawer Controller
+      (function initAiTutorDrawer() {
+        const toggleBtn = document.getElementById('ai-tutor-toggle-btn');
+        const closeBtn = document.getElementById('btn-close-ai-tutor');
+        const drawer = document.getElementById('ai-tutor-drawer');
+        const form = document.getElementById('ai-tutor-form');
+        const input = document.getElementById('ai-tutor-input');
+        const messagesList = document.getElementById('ai-tutor-messages-list');
+        const promptChips = document.querySelectorAll('.ai-prompt-chip');
+
+        if (!drawer) return;
+
+        let isDrawerOpen = false;
+
+        function toggleDrawer(open) {
+          isDrawerOpen = open !== undefined ? open : !isDrawerOpen;
+          drawer.classList.toggle('-translate-x-full', !isDrawerOpen);
+          if (isDrawerOpen && input) input.focus();
+        }
+
+        if (toggleBtn) toggleBtn.addEventListener('click', () => toggleDrawer());
+        if (closeBtn) closeBtn.addEventListener('click', () => toggleDrawer(false));
+
+        promptChips.forEach(chip => {
+          chip.addEventListener('click', () => {
+            const promptText = chip.getAttribute('data-prompt');
+            if (promptText && input) {
+              input.value = promptText;
+              form.requestSubmit();
+            }
+          });
+        });
+
+        async function sendQueryToAiTutor(query) {
+          if (!query || !messagesList) return;
+
+          // Append user query message
+          const userMsgDiv = document.createElement('div');
+          userMsgDiv.className = 'flex flex-col items-end space-y-1';
+          userMsgDiv.innerHTML = `
+            <div class="px-3 py-2 rounded-xl text-xs max-w-[85%] break-words bg-amber-600/30 text-amber-200 border border-amber-500/30 rounded-tr-none">
+              ${query}
+            </div>
+          `;
+          messagesList.appendChild(userMsgDiv);
+          messagesList.scrollTop = messagesList.scrollHeight;
+
+          // Append loading message
+          const loadingDiv = document.createElement('div');
+          loadingDiv.className = 'flex flex-col items-start space-y-1';
+          loadingDiv.innerHTML = `
+            <div class="px-3 py-2 rounded-xl text-xs bg-stone-800 text-stone-400 border border-stone-750 rounded-tl-none animate-pulse flex items-center gap-1.5">
+              <span>🤖</span> <span>Gemini is thinking...</span>
+            </div>
+          `;
+          messagesList.appendChild(loadingDiv);
+          messagesList.scrollTop = messagesList.scrollHeight;
+
+          const currentQuestion = (typeof questionsData !== 'undefined' && questionsData[currentQuestionIndex]) ? questionsData[currentQuestionIndex] : {};
+          const qText = currentQuestion.question || 'Current active quiz question';
+          const qExpl = currentQuestion.explanation || '';
+
+          try {
+            const res = await fetch('/api/quiz/ai-tutor', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                questionText: qText,
+                explanation: qExpl,
+                userQuery: query
+              })
+            });
+
+            const data = await res.json();
+            messagesList.removeChild(loadingDiv);
+
+            const aiMsgDiv = document.createElement('div');
+            aiMsgDiv.className = 'flex flex-col items-start space-y-1';
+            const replyText = data.reply || 'Sorry, I was unable to generate a response at this moment.';
+
+            aiMsgDiv.innerHTML = `
+              <div class="flex items-center gap-1 text-[10px] text-amber-400 font-bold">
+                <span>🤖 Gemini Tutor</span>
+              </div>
+              <div class="px-3 py-2.5 rounded-xl text-xs max-w-[90%] break-words bg-stone-850 text-stone-200 border border-stone-750 rounded-tl-none space-y-1">
+                ${replyText.replace(/\n/g, '<br>')}
+              </div>
+            `;
+            messagesList.appendChild(aiMsgDiv);
+            messagesList.scrollTop = messagesList.scrollHeight;
+          } catch (err) {
+            console.error('AI Tutor error:', err);
+            messagesList.removeChild(loadingDiv);
+            const errDiv = document.createElement('div');
+            errDiv.className = 'p-2 bg-red-950/40 border border-red-500/30 rounded text-red-300 text-[11px] text-center';
+            errDiv.textContent = 'Failed to connect to AI Tutor service. Please try again.';
+            messagesList.appendChild(errDiv);
+          }
+        }
+
+        if (form) {
+          form.addEventListener('submit', (e) => {
+            e.preventDefault();
+            const text = input.value.trim();
+            if (!text) return;
+            input.value = '';
+            sendQueryToAiTutor(text);
+          });
+        }
+      })();
 
       // JWT session auto-refresh background task
       function initJwtRefreshTimer() {
