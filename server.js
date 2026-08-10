@@ -349,6 +349,28 @@ if (cluster.isMaster) {
       }
     });
 
+    const lastChatMap = new Map();
+
+    socket.on('sendChatMessage', async ({ roomCode, userName, message }) => {
+      if (!roomCode || !message || typeof message !== 'string') return;
+      const trimmed = message.trim().slice(0, 200);
+      if (!trimmed) return;
+
+      const now = Date.now();
+      const last = lastChatMap.get(socket.id) || 0;
+      if (now - last < 500) {
+        socket.emit('chatError', 'Sending messages too fast!');
+        return;
+      }
+      lastChatMap.set(socket.id, now);
+
+      io.to(roomCode).emit('newChatMessage', {
+        userName: userName || 'Anonymous',
+        message: trimmed,
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      });
+    });
+
     socket.on('disconnect', async () => {
       const socketIdToClean = socket.id;
       // 5-second grace period for brief disconnects

@@ -219,8 +219,38 @@
         <h2 class="text-xl font-bold text-stone-200">Connection Lost</h2>
         <p class="text-xs text-stone-400">Reconnecting to multiplayer match lobby... Please stand by.</p>
       </div>
+    <!-- Multiplayer Chat Drawer Floating Button -->
+    <div id="multiplayer-chat-toggle-container" class="hidden fixed bottom-6 right-6 z-40">
+      <button id="btn-toggle-chat" type="button" class="relative bg-amber-600 hover:bg-amber-500 text-white p-3.5 rounded-full shadow-2xl border border-amber-400/30 flex items-center justify-center transition active:scale-95 cursor-pointer" title="Lobby Chat">
+        <span class="text-xl">💬</span>
+        <span id="chat-unread-badge" class="hidden absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold w-5 h-5 rounded-full flex items-center justify-center border-2 border-stone-900">0</span>
+      </button>
     </div>
 
+    <!-- Multiplayer Chat Slide-out Drawer -->
+    <div id="multiplayer-chat-drawer" class="fixed top-0 right-0 h-full w-80 sm:w-96 bg-stone-900/95 border-l border-stone-800 backdrop-blur-md z-50 transform translate-x-full transition-transform duration-300 flex flex-col shadow-2xl">
+      <div class="p-4 border-b border-stone-800 flex justify-between items-center bg-stone-950/60">
+        <div class="flex items-center gap-2">
+          <span class="text-lg">💬</span>
+          <h3 class="text-sm font-bold text-stone-200 uppercase tracking-wider">Lobby Live Chat</h3>
+        </div>
+        <button id="btn-close-chat" type="button" class="text-stone-400 hover:text-stone-200 text-sm p-1 cursor-pointer">✕</button>
+      </div>
+
+      <!-- Messages container -->
+      <div id="chat-messages-list" class="flex-1 p-4 overflow-y-auto space-y-3 font-sans">
+        <p class="text-stone-500 text-[11px] text-center italic">Welcome to the lobby chat! Keep it friendly.</p>
+      </div>
+
+      <!-- Input area -->
+      <div class="p-3 border-t border-stone-800 bg-stone-950/80 space-y-2">
+        <div id="chat-error-msg" class="hidden text-[10px] text-red-400 text-center font-semibold"></div>
+        <form id="chat-form" class="flex gap-2">
+          <input type="text" id="chat-input" maxlength="200" placeholder="Type a message..." autocomplete="off" class="flex-1 bg-stone-900 border border-stone-800 rounded-lg px-3 py-2 text-xs text-stone-200 focus:outline-none focus:border-amber-500">
+          <button type="submit" class="bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold px-3 py-2 rounded-lg transition cursor-pointer">Send</button>
+        </form>
+      </div>
+    </div>
 
     <!-- Pre-submission Answer Review Modal Overlay -->
     <div id="pre-submit-modal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
@@ -1178,6 +1208,99 @@
           });
 
           socket.emit('quizReady', { roomCode: window.localStorage.getItem('roomCode') });
+
+          // Setup Chat Drawer UI & Handlers
+          const chatToggleContainer = document.getElementById('multiplayer-chat-toggle-container');
+          const chatDrawer = document.getElementById('multiplayer-chat-drawer');
+          const btnToggleChat = document.getElementById('btn-toggle-chat');
+          const btnCloseChat = document.getElementById('btn-close-chat');
+          const chatForm = document.getElementById('chat-form');
+          const chatInput = document.getElementById('chat-input');
+          const chatMessagesList = document.getElementById('chat-messages-list');
+          const chatUnreadBadge = document.getElementById('chat-unread-badge');
+          const chatErrorMsg = document.getElementById('chat-error-msg');
+
+          if (chatToggleContainer) chatToggleContainer.classList.remove('hidden');
+
+          let isChatOpen = false;
+          let unreadCount = 0;
+
+          function toggleChatDrawer(open) {
+            isChatOpen = open !== undefined ? open : !isChatOpen;
+            if (chatDrawer) {
+              chatDrawer.classList.toggle('translate-x-full', !isChatOpen);
+            }
+            if (isChatOpen) {
+              unreadCount = 0;
+              if (chatUnreadBadge) {
+                chatUnreadBadge.classList.add('hidden');
+                chatUnreadBadge.textContent = '0';
+              }
+              if (chatInput) chatInput.focus();
+            }
+          }
+
+          if (btnToggleChat) btnToggleChat.addEventListener('click', () => toggleChatDrawer());
+          if (btnCloseChat) btnCloseChat.addEventListener('click', () => toggleChatDrawer(false));
+
+          const PROFANITY_LIST = ['badword', 'fool', 'stupid', 'dumb', 'idiot', 'crap', 'shit', 'fuck', 'bitch'];
+          function filterProfanity(str) {
+            let cleaned = str;
+            PROFANITY_LIST.forEach(word => {
+              const reg = new RegExp(`\\b${word}\\b`, 'gi');
+              cleaned = cleaned.replace(reg, '*'.repeat(word.length));
+            });
+            return cleaned;
+          }
+
+          if (chatForm) {
+            chatForm.addEventListener('submit', (e) => {
+              e.preventDefault();
+              const text = chatInput.value.trim();
+              if (!text) return;
+
+              const filtered = filterProfanity(text);
+              const roomCode = window.localStorage.getItem('roomCode');
+              socket.emit('sendChatMessage', { roomCode, userName, message: filtered });
+              chatInput.value = '';
+            });
+          }
+
+          socket.on('newChatMessage', ({ userName: sender, message, timestamp }) => {
+            if (!chatMessagesList) return;
+            const isSelf = sender === userName;
+            const msgDiv = document.createElement('div');
+            msgDiv.className = `flex flex-col ${isSelf ? 'items-end' : 'items-start'} space-y-1`;
+            
+            const sanitizedText = filterProfanity(message);
+            msgDiv.innerHTML = `
+              <div class="flex items-center gap-1.5 text-[10px] text-stone-500">
+                <span class="font-bold text-stone-400">${sender}</span>
+                <span>• ${timestamp}</span>
+              </div>
+              <div class="px-3 py-2 rounded-xl text-xs max-w-[85%] break-words ${isSelf ? 'bg-amber-600/30 text-amber-200 border border-amber-500/30 rounded-tr-none' : 'bg-stone-800 text-stone-200 border border-stone-700 rounded-tl-none'}">
+                ${sanitizedText}
+              </div>
+            `;
+            chatMessagesList.appendChild(msgDiv);
+            chatMessagesList.scrollTop = chatMessagesList.scrollHeight;
+
+            if (!isChatOpen && !isSelf) {
+              unreadCount++;
+              if (chatUnreadBadge) {
+                chatUnreadBadge.textContent = unreadCount > 9 ? '9+' : unreadCount;
+                chatUnreadBadge.classList.remove('hidden');
+              }
+            }
+          });
+
+          socket.on('chatError', (errMsg) => {
+            if (chatErrorMsg) {
+              chatErrorMsg.textContent = errMsg;
+              chatErrorMsg.classList.remove('hidden');
+              setTimeout(() => chatErrorMsg.classList.add('hidden'), 3000);
+            }
+          });
 
           socket.on('loadQuestion', ({ questionIndex, totalQuestions, question }) => {
             // Build the question card dynamically
