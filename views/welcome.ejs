@@ -580,6 +580,34 @@
           </div>
         </div>
 
+        <!-- AI Document Spaced Repetition Generator Dropzone -->
+        <div class="p-6 bg-stone-900/40 border border-stone-850 rounded-2xl space-y-4">
+          <div class="flex items-center gap-2 pb-2 border-b border-stone-850">
+            <span class="text-xl">📄</span>
+            <div>
+              <h3 class="text-sm font-bold text-stone-200 uppercase tracking-wider">AI Document Deck Generator</h3>
+              <p class="text-[10px] text-stone-400">Upload PDF, TXT, or Markdown notes to automatically generate spaced review cards</p>
+            </div>
+          </div>
+
+          <form id="spaced-doc-upload-form" enctype="multipart/form-data" class="space-y-3">
+            <div id="spaced-drop-zone" class="border-2 border-dashed border-stone-800 hover:border-amber-500/40 rounded-xl p-6 text-center cursor-pointer transition bg-stone-950/20">
+              <span class="text-2xl block mb-1">📥</span>
+              <p class="text-xs text-stone-300 font-medium">Click or drag & drop PDF, TXT, or MD notes here</p>
+              <span id="spaced-file-name" class="text-[10px] text-amber-400 font-mono block mt-1"></span>
+              <input type="file" id="spaced-doc-input" name="document" accept=".pdf,.txt,.md,.markdown,.json" class="hidden">
+            </div>
+
+            <div id="spaced-gen-status" class="hidden text-xs text-center font-semibold text-amber-400 animate-pulse">
+              ⚡ Generating spaced repetition deck with Gemini...
+            </div>
+
+            <button type="submit" id="btn-generate-spaced-deck" class="w-full bg-gradient-to-r from-amber-600 to-orange-600 hover:from-amber-500 hover:to-orange-500 text-white font-semibold p-2.5 rounded-lg text-xs shadow transition cursor-pointer">
+              ✨ Generate AI Spaced Deck
+            </button>
+          </form>
+        </div>
+
         <!-- Mastery Board Visualization -->
         <div class="p-6 bg-stone-900/40 border border-stone-850 rounded-2xl space-y-4">
           <div class="flex justify-between items-center pb-2 border-b border-stone-850">
@@ -2161,6 +2189,81 @@
         
         window.location.href = `/quiz?review=true`;
       });
+
+      // Spaced Repetition Document Deck Generator Script
+      const spacedDropZone = document.getElementById('spaced-drop-zone');
+      const spacedFileInput = document.getElementById('spaced-doc-input');
+      const spacedFileName = document.getElementById('spaced-file-name');
+      const spacedUploadForm = document.getElementById('spaced-doc-upload-form');
+      const spacedGenStatus = document.getElementById('spaced-gen-status');
+      const btnGenSpaced = document.getElementById('btn-generate-spaced-deck');
+
+      if (spacedDropZone && spacedFileInput) {
+        spacedDropZone.addEventListener('click', () => spacedFileInput.click());
+        spacedDropZone.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          spacedDropZone.classList.add('border-amber-500');
+        });
+        spacedDropZone.addEventListener('dragleave', () => {
+          spacedDropZone.classList.remove('border-amber-500');
+        });
+        spacedDropZone.addEventListener('drop', (e) => {
+          e.preventDefault();
+          spacedDropZone.classList.remove('border-amber-500');
+          if (e.dataTransfer.files.length > 0) {
+            spacedFileInput.files = e.dataTransfer.files;
+            spacedFileName.textContent = `Selected: ${e.dataTransfer.files[0].name}`;
+          }
+        });
+        spacedFileInput.addEventListener('change', () => {
+          if (spacedFileInput.files.length > 0) {
+            spacedFileName.textContent = `Selected: ${spacedFileInput.files[0].name}`;
+          }
+        });
+      }
+
+      if (spacedUploadForm) {
+        spacedUploadForm.addEventListener('submit', async (e) => {
+          e.preventDefault();
+          if (!spacedFileInput.files || spacedFileInput.files.length === 0) {
+            alert('Please select a document file (PDF, TXT, MD) to upload.');
+            return;
+          }
+
+          const userName = (userNameInput && userNameInput.value.trim()) || window.localStorage.getItem('userName') || 'anonymous';
+          const formData = new FormData();
+          formData.append('document', spacedFileInput.files[0]);
+          formData.append('userName', userName);
+
+          spacedGenStatus.classList.remove('hidden');
+          btnGenSpaced.disabled = true;
+
+          try {
+            const res = await fetch('/api/spaced/generate-from-file', {
+              method: 'POST',
+              body: formData
+            });
+
+            const data = await res.json();
+            spacedGenStatus.classList.add('hidden');
+            btnGenSpaced.disabled = false;
+
+            if (res.ok) {
+              alert(`🎉 ${data.message}! Added ${data.count} review cards to your deck.`);
+              spacedFileInput.value = '';
+              spacedFileName.textContent = '';
+              updateSpacedReviewUI();
+            } else {
+              alert(data.error || 'Failed to generate spaced repetition deck.');
+            }
+          } catch (err) {
+            console.error('Spaced deck upload error:', err);
+            spacedGenStatus.classList.add('hidden');
+            btnGenSpaced.disabled = false;
+            alert('Network error while processing document upload.');
+          }
+        });
+      }
 
       // Request notifications permission and register scheduling
       const btnRequestNotifications = document.getElementById('btn-request-notifications');

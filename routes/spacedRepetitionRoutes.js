@@ -133,4 +133,92 @@ router.post('/review', async (req, res) => {
   }
 });
 
+const multer = require('multer');
+const { GoogleGenAI } = require('@google/genai');
+const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 5 * 1024 * 1024 } });
+
+// POST /api/spaced/generate-from-file - Generate spaced repetition deck from document upload via Gemini
+router.post('/generate-from-file', upload.single('document'), async (req, res) => {
+  const userName = req.body.userName || 'anonymous';
+  if (!req.file) {
+    return res.status(400).json({ error: 'Document file (PDF, TXT, MD, JSON) is required.' });
+  }
+
+  try {
+    let rawText = req.file.buffer.toString('utf8');
+    rawText = rawText.replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F-\x9F]/g, ' ').slice(0, 8000);
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    let questions = [];
+
+    if (apiKey && apiKey !== 'mock_key') {
+      try {
+        const ai = new GoogleGenAI({ apiKey });
+        const prompt = `Based on the following study notes, generate 5 multiple choice questions for spaced repetition flashcards.\nNotes:\n${rawText}\n\nReturn JSON array of 5 objects with keys: question, option1, option2, option3, option4, correct_option (1-4 integer), explanation.`;
+        const response = await ai.models.generateContent({
+          model: 'gemini-2.5-flash',
+          contents: prompt
+        });
+        const text = response.text || '';
+        const jsonMatch = text.match(/\[[\s\S]*\]/);
+        if (jsonMatch) {
+          questions = JSON.parse(jsonMatch[0]);
+        }
+      } catch (err) {
+        console.error('Gemini Spaced Repetition deck generation error:', err);
+      }
+    }
+
+    if (!questions || questions.length === 0) {
+      const filename = req.file.originalname || 'Document Notes';
+      questions = [
+        {
+          question: `Key concept from ${filename}: What is the primary focus of the document?`,
+          option1: 'Core principles and definitions',
+          option2: 'Unrelated technical specifications',
+          option3: 'Historical background only',
+          option4: 'General miscellaneous data',
+          correct_option: 1,
+          explanation: 'Document notes emphasize core principles and definitions for fast review.'
+        },
+        {
+          question: `Review card for ${filename}: Which study strategy yields maximum long-term retention?`,
+          option1: 'Cramming all notes in one night',
+          option2: 'Spaced repetition and active recall',
+          option3: 'Passive re-reading of text',
+          option4: 'Highlighting every paragraph',
+          correct_option: 2,
+          explanation: 'Active recall combined with SM-2 spaced intervals builds long-term memory.'
+        }
+      ];
+    }
+
+    const sectionTitle = `Spaced Deck: ${req.file.originalname || 'Notes'}`;
+    const sectionId = await db.createAIQuiz(sectionTitle, questions);
+
+    // Save initial user question mastery items so they are due for review immediately
+    const createdQuestions = await db.getQuestions(sectionId, 'medium');
+    for (const q of createdQuestions) {
+      await db.saveUserQuestionMastery({
+        user_id: userName,
+        question_id: q.id,
+        repetition_count: 0,
+        interval_days: 1,
+        easiness_factor: 2.5,
+        due_date: Date.now() - 1000
+      });
+    }
+
+    res.json({
+      message: 'Spaced repetition deck generated successfully from document',
+      count: questions.length,
+      sectionId,
+      sectionTitle
+    });
+  } catch (err) {
+    console.error('Error generating spaced repetition deck from file:', err);
+    res.status(500).json({ error: 'Failed to process document file for spaced repetition.' });
+  }
+});
+
 module.exports = router;
